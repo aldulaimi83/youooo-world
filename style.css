@@ -6,15 +6,8 @@ body {
   height: 100%;
   background: #000;
   color: #fff;
-  font-family: Arial, sans-serif;
+  font-family: "Courier New", monospace;
   overflow: hidden;
-}
-
-#map {
-  position: absolute;
-  top: 88px;
-  bottom: 0;
-  width: 100%;
 }
 
 #header {
@@ -27,102 +20,60 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
+  padding: 0 20px;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.92);
   border-bottom: 1px solid #00ff99;
-  box-sizing: border-box;
-  font-family: "Courier New", monospace;
 }
 
 .header-left h1 {
   margin: 0;
-  font-size: 28px;
   color: #00ff99;
-  letter-spacing: 1px;
+  font-size: 28px;
 }
 
 .header-left p {
   margin: 6px 0 0 0;
+  color: #cfcfcf;
   font-size: 14px;
-  color: #b8c7c0;
 }
 
 .header-right {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  gap: 12px;
 }
 
 .status-box {
   border: 1px solid #00ff99;
   color: #00ff99;
-  padding: 8px 10px;
-  font-size: 12px;
-  background: rgba(0, 255, 153, 0.08);
+  padding: 8px 12px;
   border-radius: 4px;
+  font-size: 12px;
+}
+
+#map {
+  position: absolute;
+  top: 89px;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .military-marker {
-  width: 10px;
-  height: 10px;
-  background: #ff3b3b;
-  border: 1px solid #ffffff;
+  width: 12px;
+  height: 12px;
+  background: #ff0000;
+  border: 2px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 10px #ff0000, 0 0 20px rgba(255, 0, 0, 0.7);
+  box-shadow:
+    0 0 10px #ff0000,
+    0 0 20px #ff0000,
+    0 0 40px rgba(255, 0, 0, 0.7);
 }
 
 .maplibregl-popup-content {
-  background: rgba(10, 14, 18, 0.96);
-  color: #e6fff2;
+  background: #081018;
+  color: #eafff5;
   border: 1px solid #00ff99;
-  border-radius: 8px;
   font-family: "Courier New", monospace;
-  min-width: 220px;
-}
-
-.maplibregl-popup-close-button {
-  color: #00ff99;
-  font-size: 18px;
-}
-
-.popup-title {
-  margin: 0 0 10px 0;
-  color: #00ff99;
-  font-size: 16px;
-}
-
-.popup-row {
-  margin: 6px 0;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.popup-label {
-  color: #8cffc8;
-  font-weight: bold;
-}
-
-@media (max-width: 768px) {
-  #header {
-    height: auto;
-    min-height: 88px;
-    padding: 12px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  #map {
-    top: 120px;
-  }
-
-  .header-left h1 {
-    font-size: 22px;
-  }
-
-  .header-right {
-    width: 100%;
-    justify-content: flex-start;
-  }
 }
