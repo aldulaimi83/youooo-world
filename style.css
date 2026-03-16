@@ -15,7 +15,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 30;
   height: 88px;
   display: flex;
   align-items: center;
@@ -51,6 +51,46 @@ body {
   font-size: 12px;
 }
 
+#sidebar {
+  position: absolute;
+  top: 104px;
+  left: 16px;
+  z-index: 25;
+  width: 220px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid #00ff99;
+  border-radius: 8px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.sidebar-title {
+  color: #00ff99;
+  font-weight: bold;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  color: #d8fff0;
+  font-size: 13px;
+}
+
+.layer-item input {
+  accent-color: #00ff99;
+}
+
+.sidebar-note {
+  margin-top: 14px;
+  color: #9cc7b6;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 #map {
   position: absolute;
   top: 89px;
@@ -76,4 +116,18 @@ body {
   color: #eafff5;
   border: 1px solid #00ff99;
   font-family: "Courier New", monospace;
+}
+
+.popup-title {
+  color: #00ff99;
+  margin: 0 0 10px 0;
+}
+
+.popup-row {
+  margin: 6px 0;
+}
+
+.popup-label {
+  color: #8cffc8;
+  font-weight: bold;
 }
