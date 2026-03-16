@@ -181,3 +181,26 @@ body {
     flex-wrap: wrap;
   }
 }
+#market-tape {
+  position: absolute;
+  top: 89px;
+  left: 0;
+  right: 0;
+  z-index: 29;
+  background: rgba(0, 0, 0, 0.95);
+  border-bottom: 1px solid #1f3f34;
+  color: #00ff99;
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#map {
+  position: absolute;
+  top: 122px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
