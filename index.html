@@ -19,6 +19,44 @@
     </div>
   </div>
 
+  <div id="sidebar">
+    <div class="sidebar-title">TACTICAL LAYERS</div>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-earthquakes" checked />
+      <span>Earthquakes</span>
+    </label>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-aircraft" />
+      <span>Aircraft</span>
+    </label>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-satellites" />
+      <span>Satellites</span>
+    </label>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-ships" />
+      <span>Ships</span>
+    </label>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-conflicts" />
+      <span>Conflict Zones</span>
+    </label>
+
+    <label class="layer-item">
+      <input type="checkbox" id="toggle-wildfires" />
+      <span>Wildfires</span>
+    </label>
+
+    <div class="sidebar-note">
+      Aircraft is the best next live layer to try. Satellites, wildfires, ships, and conflicts need API access or keys.
+    </div>
+  </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
