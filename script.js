@@ -1,46 +1,64 @@
+// Create the map
 const map = new maplibregl.Map({
   container: "map",
-  style: "https://api.maptiler.com/maps/satellite/style.json?key=Get_Your_Own_Key",
-  center: [20, 20],
-  zoom: 2
+  style: "https://demotiles.maplibre.org/style.json", // reliable public style
+  center: [-98, 39], // USA
+  zoom: 3
 });
 
+// Navigation controls
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-function createMarker(lon, lat, title) {
+// HQ marker (Austin Texas)
+const hqPopup = new maplibregl.Popup().setHTML(`
+<h3>YOUOOO HQ</h3>
+<p>Command Node</p>
+<p>Status: Online</p>
+<p>Austin, Texas</p>
+`);
 
-  const el = document.createElement("div");
-  el.className = "military-marker";
+new maplibregl.Marker({ color: "#00ff99" })
+  .setLngLat([-97.7431, 30.2672])
+  .setPopup(hqPopup)
+  .addTo(map);
 
-  new maplibregl.Marker(el)
-    .setLngLat([lon, lat])
-    .setPopup(
-      new maplibregl.Popup().setHTML(`
-        <h3>${title}</h3>
-        <p>Live global event detected</p>
-      `)
-    )
-    .addTo(map);
-}
-
+// Load earthquake feed
 async function loadEarthquakes() {
+  try {
 
-  const response = await fetch(
-    "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
-  );
+    const res = await fetch(
+      "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
+    );
 
-  const data = await response.json();
+    const data = await res.json();
 
-  data.features.forEach((quake) => {
+    data.features.forEach(q => {
 
-    const lon = quake.geometry.coordinates[0];
-    const lat = quake.geometry.coordinates[1];
-    const mag = quake.properties.mag;
-    const place = quake.properties.place;
+      const lon = q.geometry.coordinates[0];
+      const lat = q.geometry.coordinates[1];
 
-    createMarker(lon, lat, `Earthquake M${mag} - ${place}`);
+      const mag = q.properties.mag;
+      const place = q.properties.place;
 
-  });
+      const el = document.createElement("div");
+      el.className = "military-marker";
+
+      const popup = new maplibregl.Popup().setHTML(`
+      <h3>SEISMIC EVENT</h3>
+      <p>${place}</p>
+      <p>Magnitude: ${mag}</p>
+      `);
+
+      new maplibregl.Marker({ element: el })
+        .setLngLat([lon, lat])
+        .setPopup(popup)
+        .addTo(map);
+
+    });
+
+  } catch (err) {
+    console.log("Feed error:", err);
+  }
 }
 
 loadEarthquakes();
