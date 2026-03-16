@@ -1,0 +1,22 @@
+body {
+  margin:0;
+  font-family: Arial;
+  background:black;
+  color:white;
+}
+
+#map{
+  position:absolute;
+  top:60px;
+  bottom:0;
+  width:100%;
+}
+
+#header{
+  position:absolute;
+  z-index:1;
+  background:black;
+  padding:10px;
+  width:100%;
+  border-bottom:1px solid #333;
+}
