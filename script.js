@@ -230,5 +230,38 @@ wildfiresToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadWildfiresDemo();
   else clearMarkers(wildfireMarkers);
 });
+async function loadMarketTape() {
+  const symbols = ["SPY", "QQQ", "GLD", "USO", "BTCUSD", "AMD", "NVDA"];
+  const output = [];
 
+  for (const symbol of symbols) {
+    try {
+      const res = await fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=d6s99q9r01qj447aq9h0d6s99q9r01qj447aq9hg`
+      );
+      const data = await res.json();
+
+      if (typeof data.c === "number") {
+        const current = data.c;
+        const previous = data.pc;
+        const change = current - previous;
+        const pct = previous ? (change / previous) * 100 : 0;
+        const arrow = change >= 0 ? "▲" : "▼";
+
+        output.push(
+          `${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`
+        );
+      } else {
+        output.push(`${symbol} N/A`);
+      }
+    } catch (err) {
+      output.push(`${symbol} ERR`);
+    }
+  }
+
+  document.getElementById("market-data").textContent = output.join("   |   ");
+}
+
+loadMarketTape();
+setInterval(loadMarketTape, 60000);
 loadEarthquakes();
