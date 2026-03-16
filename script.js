@@ -104,14 +104,14 @@ async function loadEarthquakes() {
   }
 }
 
-function addPlaceholderMarkers(markerArray, points, title, category) {
+function addPlaceholderMarkers(markerArray, points, title, category, color) {
   clearMarkers(markerArray);
 
   points.forEach((p) => {
     const el = document.createElement("div");
     el.className = "military-marker";
-    el.style.background = p.color;
-    el.style.boxShadow = `0 0 10px ${p.color}, 0 0 20px ${p.color}, 0 0 40px ${p.color}`;
+    el.style.background = color;
+    el.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}, 0 0 40px ${color}`;
 
     const marker = new maplibregl.Marker({ element: el })
       .setLngLat([p.lon, p.lat])
@@ -132,12 +132,13 @@ function loadAircraftDemo() {
   addPlaceholderMarkers(
     aircraftMarkers,
     [
-      { lon: -97, lat: 32, name: "Flight Track Alpha", color: "#00b7ff" },
-      { lon: -80, lat: 35, name: "Flight Track Bravo", color: "#00b7ff" },
-      { lon: -118, lat: 34, name: "Flight Track Charlie", color: "#00b7ff" }
+      { lon: -97, lat: 32, name: "Flight Track Alpha" },
+      { lon: -80, lat: 35, name: "Flight Track Bravo" },
+      { lon: -118, lat: 34, name: "Flight Track Charlie" }
     ],
     "AIRCRAFT",
-    "Aircraft"
+    "Aircraft",
+    "#00b7ff"
   );
 }
 
@@ -145,11 +146,12 @@ function loadSatellitesDemo() {
   addPlaceholderMarkers(
     satelliteMarkers,
     [
-      { lon: -40, lat: 10, name: "Orbital Pass 1", color: "#ffd400" },
-      { lon: 20, lat: -5, name: "Orbital Pass 2", color: "#ffd400" }
+      { lon: -40, lat: 10, name: "Orbital Pass 1" },
+      { lon: 20, lat: -5, name: "Orbital Pass 2" }
     ],
     "SATELLITE",
-    "Satellite"
+    "Satellite",
+    "#ffd400"
   );
 }
 
@@ -157,11 +159,12 @@ function loadShipsDemo() {
   addPlaceholderMarkers(
     shipMarkers,
     [
-      { lon: -75, lat: 25, name: "Vessel Corridor Atlantic", color: "#00ffff" },
-      { lon: 55, lat: 25, name: "Vessel Corridor Gulf", color: "#00ffff" }
+      { lon: -75, lat: 25, name: "Vessel Corridor Atlantic" },
+      { lon: 55, lat: 25, name: "Vessel Corridor Gulf" }
     ],
     "VESSEL",
-    "Ship"
+    "Ship",
+    "#00ffff"
   );
 }
 
@@ -169,11 +172,12 @@ function loadConflictsDemo() {
   addPlaceholderMarkers(
     conflictMarkers,
     [
-      { lon: 36, lat: 33, name: "Conflict Zone Levant", color: "#ff7b00" },
-      { lon: 31, lat: 49, name: "Conflict Zone East Europe", color: "#ff7b00" }
+      { lon: 36, lat: 33, name: "Conflict Zone Levant" },
+      { lon: 31, lat: 49, name: "Conflict Zone East Europe" }
     ],
     "CONFLICT ZONE",
-    "Conflict"
+    "Conflict",
+    "#ff7b00"
   );
 }
 
@@ -181,40 +185,48 @@ function loadWildfiresDemo() {
   addPlaceholderMarkers(
     wildfireMarkers,
     [
-      { lon: -121, lat: 38, name: "Wildfire Alert West", color: "#ff3b00" },
-      { lon: 147, lat: -37, name: "Wildfire Alert South", color: "#ff3b00" }
+      { lon: -121, lat: 38, name: "Wildfire Alert West" },
+      { lon: 147, lat: -37, name: "Wildfire Alert South" }
     ],
     "WILDFIRE",
-    "Wildfire"
+    "Wildfire",
+    "#ff3b00"
   );
 }
 
-document.getElementById("toggle-earthquakes").addEventListener("change", (e) => {
+const earthquakesToggle = document.getElementById("toggle-earthquakes");
+const aircraftToggle = document.getElementById("toggle-aircraft");
+const satellitesToggle = document.getElementById("toggle-satellites");
+const shipsToggle = document.getElementById("toggle-ships");
+const conflictsToggle = document.getElementById("toggle-conflicts");
+const wildfiresToggle = document.getElementById("toggle-wildfires");
+
+earthquakesToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadEarthquakes();
   else clearMarkers(earthquakeMarkers);
 });
 
-document.getElementById("toggle-aircraft").addEventListener("change", (e) => {
+aircraftToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadAircraftDemo();
   else clearMarkers(aircraftMarkers);
 });
 
-document.getElementById("toggle-satellites").addEventListener("change", (e) => {
+satellitesToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadSatellitesDemo();
   else clearMarkers(satelliteMarkers);
 });
 
-document.getElementById("toggle-ships").addEventListener("change", (e) => {
+shipsToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadShipsDemo();
   else clearMarkers(shipMarkers);
 });
 
-document.getElementById("toggle-conflicts").addEventListener("change", (e) => {
+conflictsToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadConflictsDemo();
   else clearMarkers(conflictMarkers);
 });
 
-document.getElementById("toggle-wildfires").addEventListener("change", (e) => {
+wildfiresToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadWildfiresDemo();
   else clearMarkers(wildfireMarkers);
 });
