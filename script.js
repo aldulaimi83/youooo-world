@@ -3,36 +3,37 @@ const map = new maplibregl.Map({
   style: {
     version: 8,
     sources: {
-      osm: {
+      darkmatter: {
         type: "raster",
         tiles: [
-          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+          "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+          "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+          "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
         ],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap Contributors"
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
       }
     },
     layers: [
       {
-        id: "osm-tiles",
+        id: "darkmatter-layer",
         type: "raster",
-        source: "osm"
+        source: "darkmatter"
       }
     ]
   },
-  center: [-97.7431, 30.2672],
+  center: [-98, 39],
   zoom: 3
 });
 
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
 const hqPopup = new maplibregl.Popup().setHTML(`
-  <h3>YOUOOO HQ</h3>
-  <p>Command Node</p>
-  <p>Status: Online</p>
-  <p>Austin, Texas, USA</p>
+  <h3 class="popup-title">YOUOOO HQ</h3>
+  <div class="popup-row"><span class="popup-label">Type:</span> Command Node</div>
+  <div class="popup-row"><span class="popup-label">Status:</span> Online</div>
+  <div class="popup-row"><span class="popup-label">Region:</span> Austin, Texas, USA</div>
 `);
 
 new maplibregl.Marker({ color: "#00ff99" })
@@ -52,14 +53,17 @@ async function loadEarthquakes() {
       const lat = q.geometry.coordinates[1];
       const mag = q.properties.mag ?? "N/A";
       const place = q.properties.place ?? "Unknown";
+      const time = new Date(q.properties.time).toLocaleString();
 
       const el = document.createElement("div");
       el.className = "military-marker";
 
       const popup = new maplibregl.Popup().setHTML(`
-        <h3>SEISMIC EVENT</h3>
-        <p>${place}</p>
-        <p>Magnitude: ${mag}</p>
+        <h3 class="popup-title">SEISMIC EVENT</h3>
+        <div class="popup-row"><span class="popup-label">Location:</span> ${place}</div>
+        <div class="popup-row"><span class="popup-label">Magnitude:</span> ${mag}</div>
+        <div class="popup-row"><span class="popup-label">Time:</span> ${time}</div>
+        <div class="popup-row"><span class="popup-label">Category:</span> Earthquake</div>
       `);
 
       new maplibregl.Marker({ element: el })
