@@ -1,25 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Youooo World</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Youooo World</title>
 
-  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css">
+  <link
+    href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <div id="header">
+    <div class="header-left">
+      <h1>YOUOOO WORLD 🌍</h1>
+      <p>Global Monitoring Command Center</p>
+    </div>
+    <div class="header-right">
+      <div class="status-box">STATUS: ONLINE</div>
+      <div class="status-box">FEED: EARTHQUAKES</div>
+    </div>
+  </div>
 
-<div id="header">
-  <h2>Youooo World 🌍</h2>
-  <p>Global monitoring system</p>
-</div>
+  <div id="map"></div>
 
-<div id="map"></div>
-
-<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script src="script.js"></script>
-
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
