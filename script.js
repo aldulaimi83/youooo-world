@@ -3,7 +3,7 @@ const map = new maplibregl.Map({
   style: {
     version: 8,
     sources: {
-      darkmatter: {
+      carto: {
         type: "raster",
         tiles: [
           "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
@@ -17,9 +17,9 @@ const map = new maplibregl.Map({
     },
     layers: [
       {
-        id: "darkmatter-layer",
+        id: "carto-dark",
         type: "raster",
-        source: "darkmatter"
+        source: "carto"
       }
     ]
   },
@@ -42,13 +42,17 @@ new maplibregl.Marker({ color: "#00ff99" })
   .addTo(map);
 
 async function loadEarthquakes() {
+
   try {
+
     const res = await fetch(
       "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
     );
+
     const data = await res.json();
 
     data.features.forEach((q) => {
+
       const lon = q.geometry.coordinates[0];
       const lat = q.geometry.coordinates[1];
       const mag = q.properties.mag ?? "N/A";
@@ -70,10 +74,15 @@ async function loadEarthquakes() {
         .setLngLat([lon, lat])
         .setPopup(popup)
         .addTo(map);
+
     });
+
   } catch (err) {
+
     console.error("Earthquake feed error:", err);
+
   }
+
 }
 
 loadEarthquakes();
