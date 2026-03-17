@@ -65,9 +65,25 @@ body {
   font-size: 12px;
 }
 
+#market-tape {
+  position: absolute;
+  top: 89px;
+  left: 0;
+  right: 0;
+  z-index: 29;
+  background: rgba(0, 0, 0, 0.95);
+  border-bottom: 1px solid #1f3f34;
+  color: #00ff99;
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #sidebar {
   position: absolute;
-  top: 104px;
+  top: 132px;
   left: 12px;
   z-index: 25;
   width: 280px;
@@ -107,7 +123,7 @@ body {
 
 #map {
   position: absolute;
-  top: 89px;
+  top: 122px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -164,13 +180,17 @@ body {
     gap: 10px;
   }
 
-  #map {
-    top: 120px;
+  #market-tape {
+    top: 118px;
   }
 
   #sidebar {
-    top: 136px;
+    top: 160px;
     width: 240px;
+  }
+
+  #map {
+    top: 150px;
   }
 
   .header-left h1 {
@@ -180,27 +200,4 @@ body {
   .header-right {
     flex-wrap: wrap;
   }
-}
-#market-tape {
-  position: absolute;
-  top: 89px;
-  left: 0;
-  right: 0;
-  z-index: 29;
-  background: rgba(0, 0, 0, 0.95);
-  border-bottom: 1px solid #1f3f34;
-  color: #00ff99;
-  padding: 8px 16px;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#map {
-  position: absolute;
-  top: 122px;
-  left: 0;
-  right: 0;
-  bottom: 0;
 }
