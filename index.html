@@ -1,84 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Youooo World</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Youooo World</title>
 
-  <link
-    href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="style.css" />
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+
 </head>
+
 <body>
-  <div id="header">
-    <div class="header-left">
-      <h1>
-        YOUOOO WORLD
-        <a
-          href="https://www.linkedin.com/in/ahmedaldulaimi/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="linkedin-link"
-          title="Ahmed Aldulaimi LinkedIn"
-        >🌍</a>
-      </h1>
-      <p>Global Monitoring Command Center</p>
-    </div>
 
-    <div class="header-right">
-      <div class="status-box">STATUS: ONLINE</div>
-      <div class="status-box">MAP: ACTIVE</div>
-    </div>
-  </div>
+<div id="topbar">
 
-  <div id="market-tape">
-    <span id="market-data">Loading market data...</span>
-  </div>
+<div class="brand">
 
-  <div id="sidebar">
-    <div class="sidebar-title">TACTICAL LAYERS</div>
+YOUOOO WORLD 🌍
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-earthquakes" checked />
-      <span>Earthquakes</span>
-    </label>
+<a href="https://www.linkedin.com/in/ahmedaldulaimi/" target="_blank" class="linkedin">
+LinkedIn
+</a>
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-aircraft" />
-      <span>Aircraft</span>
-    </label>
+</div>
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-satellites" />
-      <span>Satellites</span>
-    </label>
+<div class="status">
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-ships" />
-      <span>Ships</span>
-    </label>
+<div class="status-box">STATUS: ONLINE</div>
+<div class="status-box">MAP: ACTIVE</div>
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-conflicts" />
-      <span>Conflict Zones</span>
-    </label>
+</div>
 
-    <label class="layer-item">
-      <input type="checkbox" id="toggle-wildfires" />
-      <span>Wildfires</span>
-    </label>
+</div>
 
-    <div class="sidebar-note">
-      Earthquakes and market tape are live.<br />
-      Aircraft, satellites, ships, conflict zones, and wildfires are still placeholders until we connect real data APIs.
-    </div>
-  </div>
 
-  <div id="map"></div>
+<div id="market-tape">
+<span id="market-data">Loading market...</span>
+</div>
 
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-  <script src="script.js"></script>
+
+<div id="sidebar">
+
+<div class="sidebar-header">
+
+TACTICAL LAYERS
+
+<button id="collapse-btn">—</button>
+
+</div>
+
+
+<label class="layer">
+<input type="checkbox" id="toggle-earthquakes" checked>
+Earthquakes
+</label>
+
+
+<label class="layer">
+<input type="checkbox" id="toggle-aircraft">
+Aircraft
+</label>
+
+
+<label class="layer">
+<input type="checkbox" id="toggle-conflicts">
+Conflict
+</label>
+
+
+<label class="layer">
+<input type="checkbox" id="toggle-wildfires">
+Wildfires
+</label>
+
+
+</div>
+
+
+<div id="map"></div>
+
+
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="script.js"></script>
+
 </body>
 </html>
