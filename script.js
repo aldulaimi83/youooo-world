@@ -1,3 +1,5 @@
+const FINNHUB_API_KEY = "REPLACE_WITH_YOUR_NEW_KEY";
+
 const map = new maplibregl.Map({
   container: "map",
   style: {
@@ -119,7 +121,7 @@ function addPlaceholderMarkers(markerArray, points, title, category, color) {
         makePopup(title, [
           { label: "Name", value: p.name },
           { label: "Category", value: category },
-          { label: "Status", value: "Demo placeholder" }
+          { label: "Status", value: "Placeholder feed" }
         ])
       )
       .addTo(map);
@@ -194,6 +196,38 @@ function loadWildfiresDemo() {
   );
 }
 
+async function loadMarketTape() {
+  const symbols = ["SPY", "QQQ", "GLD", "USO", "AMD", "NVDA"];
+  const output = [];
+
+  for (const symbol of symbols) {
+    try {
+      const res = await fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`
+      );
+
+      const data = await res.json();
+
+      if (typeof data.c === "number" && typeof data.pc === "number" && data.c !== 0) {
+        const current = data.c;
+        const previous = data.pc;
+        const change = current - previous;
+        const pct = previous ? (change / previous) * 100 : 0;
+        const arrow = change >= 0 ? "▲" : "▼";
+
+        output.push(`${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`);
+      } else {
+        output.push(`${symbol} N/A`);
+      }
+    } catch (err) {
+      console.error("Market tape error for", symbol, err);
+      output.push(`${symbol} ERR`);
+    }
+  }
+
+  document.getElementById("market-data").textContent = output.join("   |   ");
+}
+
 const earthquakesToggle = document.getElementById("toggle-earthquakes");
 const aircraftToggle = document.getElementById("toggle-aircraft");
 const satellitesToggle = document.getElementById("toggle-satellites");
@@ -230,38 +264,7 @@ wildfiresToggle.addEventListener("change", (e) => {
   if (e.target.checked) loadWildfiresDemo();
   else clearMarkers(wildfireMarkers);
 });
-async function loadMarketTape() {
-  const symbols = ["SPY", "QQQ", "GLD", "USO", "BTCUSD", "AMD", "NVDA"];
-  const output = [];
 
-  for (const symbol of symbols) {
-    try {
-      const res = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=d6s99q9r01qj447aq9h0d6s99q9r01qj447aq9hg`
-      );
-      const data = await res.json();
-
-      if (typeof data.c === "number") {
-        const current = data.c;
-        const previous = data.pc;
-        const change = current - previous;
-        const pct = previous ? (change / previous) * 100 : 0;
-        const arrow = change >= 0 ? "▲" : "▼";
-
-        output.push(
-          `${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`
-        );
-      } else {
-        output.push(`${symbol} N/A`);
-      }
-    } catch (err) {
-      output.push(`${symbol} ERR`);
-    }
-  }
-
-  document.getElementById("market-data").textContent = output.join("   |   ");
-}
-
+loadEarthquakes();
 loadMarketTape();
 setInterval(loadMarketTape, 60000);
-loadEarthquakes();
