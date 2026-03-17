@@ -1,87 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Youooo World</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Youooo World</title>
 
-<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
-<link rel="stylesheet" href="style.css"/>
-
+  <link
+    href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <div id="map"></div>
 
-<div id="topbar">
+  <div id="topbar" class="panel draggable">
+    <div class="panel-top">
+      <div class="brand-wrap">
+        <div class="brand-row">
+          <div class="brand-title">YOUOOO WORLD</div>
 
-<div class="brand">
+          <a
+            id="linkedin-globe"
+            href="https://www.linkedin.com/in/ahmedaldulaimi/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Ahmed Aldulaimi LinkedIn"
+          >🌍</a>
+        </div>
 
-YOUOOO WORLD 🌍
+        <div class="brand-subtitle">Global Monitoring Command Center</div>
+      </div>
 
-<a href="https://www.linkedin.com/in/ahmedaldulaimi/" target="_blank" class="linkedin">
-LinkedIn
-</a>
+      <div class="topbar-actions">
+        <button id="refresh-all-btn" class="mini-btn">Refresh</button>
+        <button id="collapse-topbar-btn" class="mini-btn">—</button>
+      </div>
+    </div>
 
-</div>
+    <div id="topbar-content">
+      <div class="status-row">
+        <div class="status-box">STATUS: ONLINE</div>
+        <div class="status-box">MODE: LIVE</div>
+        <div class="status-box" id="last-update-box">UPDATED: --</div>
+      </div>
 
-<div class="status">
+      <div id="market-tape">
+        <span id="market-data">Loading market data...</span>
+      </div>
+    </div>
+  </div>
 
-<div class="status-box">STATUS: ONLINE</div>
-<div class="status-box">MAP: ACTIVE</div>
+  <div id="sidebar" class="panel draggable">
+    <div class="panel-top">
+      <div class="sidebar-title">TACTICAL LAYERS</div>
+      <div class="sidebar-actions">
+        <button id="collapse-sidebar-btn" class="mini-btn">—</button>
+      </div>
+    </div>
 
-</div>
+    <div id="sidebar-content">
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-earthquakes" checked />
+        <span>Earthquakes</span>
+      </label>
 
-</div>
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-aircraft" checked />
+        <span>Aircraft</span>
+      </label>
 
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-conflicts" checked />
+        <span>Conflict Events</span>
+      </label>
 
-<div id="market-tape">
-<span id="market-data">Loading market...</span>
-</div>
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-wildfires" checked />
+        <span>Wildfires</span>
+      </label>
 
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-ships" />
+        <span>Ships (next)</span>
+      </label>
 
-<div id="sidebar">
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-satellites" />
+        <span>Satellites (next)</span>
+      </label>
 
-<div class="sidebar-header">
+      <label class="layer-item">
+        <input type="checkbox" id="toggle-missiles" />
+        <span>Missile Alerts (next)</span>
+      </label>
 
-TACTICAL LAYERS
+      <div class="section-label">Conflict Regions</div>
 
-<button id="collapse-btn">—</button>
+      <label class="layer-item small">
+        <input type="checkbox" id="region-ukraine" checked />
+        <span>Ukraine</span>
+      </label>
 
-</div>
+      <label class="layer-item small">
+        <input type="checkbox" id="region-middle-east" checked />
+        <span>Middle East</span>
+      </label>
 
+      <label class="layer-item small">
+        <input type="checkbox" id="region-africa" checked />
+        <span>Africa</span>
+      </label>
 
-<label class="layer">
-<input type="checkbox" id="toggle-earthquakes" checked>
-Earthquakes
-</label>
+      <div class="sidebar-note">
+        Drag this panel anywhere. Collapse it when you want more map space.
+      </div>
+    </div>
+  </div>
 
+  <div id="alerts-panel" class="panel draggable">
+    <div class="panel-top">
+      <div class="sidebar-title">LIVE ALERTS</div>
+      <button id="collapse-alerts-btn" class="mini-btn">—</button>
+    </div>
 
-<label class="layer">
-<input type="checkbox" id="toggle-aircraft">
-Aircraft
-</label>
+    <div id="alerts-content">
+      <div class="alert-line"><span>Earthquakes:</span> <strong id="eq-count">0</strong></div>
+      <div class="alert-line"><span>Aircraft:</span> <strong id="aircraft-count">0</strong></div>
+      <div class="alert-line"><span>Conflicts:</span> <strong id="conflict-count">0</strong></div>
+      <div class="alert-line"><span>Wildfires:</span> <strong id="fire-count">0</strong></div>
+      <div class="alert-line"><span>Ships:</span> <strong id="ships-count">coming soon</strong></div>
+      <div class="alert-line"><span>Satellites:</span> <strong id="sat-count">coming soon</strong></div>
+      <div class="alert-line"><span>Missiles:</span> <strong id="missile-count">coming soon</strong></div>
+    </div>
+  </div>
 
+  <div id="bottom-hint">
+    Drag panels • Toggle layers • Move map to refresh aircraft and fires
+  </div>
 
-<label class="layer">
-<input type="checkbox" id="toggle-conflicts">
-Conflict
-</label>
-
-
-<label class="layer">
-<input type="checkbox" id="toggle-wildfires">
-Wildfires
-</label>
-
-
-</div>
-
-
-<div id="map"></div>
-
-
-<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script src="script.js"></script>
-
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
