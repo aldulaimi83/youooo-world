@@ -1,4 +1,4 @@
-const FINNHUB_API_KEY = "REPLACE_WITH_YOUR_NEW_KEY";
+const FINNHUB_API_KEY = "d6s9ng9r01qj447art3gd6s9ng9r01qj447art40";
 
 const map = new maplibregl.Map({
   container: "map",
