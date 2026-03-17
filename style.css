@@ -1,203 +1,141 @@
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  color: #fff;
-  font-family: "Courier New", monospace;
-  overflow: hidden;
+html,body{
+margin:0;
+padding:0;
+height:100%;
+background:black;
+color:white;
+font-family:Courier New;
 }
 
-#header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  height: 88px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.92);
-  border-bottom: 1px solid #00ff99;
+#map{
+position:absolute;
+top:0;
+bottom:0;
+width:100%;
+z-index:1;
 }
 
-.header-left h1 {
-  margin: 0;
-  color: #00ff99;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+#topbar{
+position:absolute;
+top:10px;
+left:10px;
+right:10px;
+z-index:30;
+
+background:rgba(0,0,0,.7);
+border:1px solid #00ff99;
+border-radius:10px;
+
+padding:10px;
+
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
-.header-left p {
-  margin: 6px 0 0 0;
-  color: #cfcfcf;
-  font-size: 14px;
+.brand{
+color:#00ff99;
+font-weight:bold;
+font-size:18px;
 }
 
-.linkedin-link {
-  text-decoration: none;
-  display: inline-block;
-  transition: transform 0.2s ease, filter 0.2s ease;
+.linkedin{
+margin-left:10px;
+color:white;
+text-decoration:none;
 }
 
-.linkedin-link:hover {
-  filter: drop-shadow(0 0 6px #00ff99);
-  transform: scale(1.15);
+.status{
+display:flex;
+gap:10px;
 }
 
-.header-right {
-  display: flex;
-  gap: 12px;
+.status-box{
+border:1px solid #00ff99;
+padding:6px 10px;
+border-radius:5px;
+font-size:12px;
+color:#00ff99;
 }
 
-.status-box {
-  border: 1px solid #00ff99;
-  color: #00ff99;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 12px;
+#market-tape{
+position:absolute;
+top:70px;
+left:10px;
+right:10px;
+
+z-index:29;
+
+background:rgba(0,0,0,.7);
+border:1px solid #00ff99;
+
+padding:6px 10px;
+border-radius:10px;
+
+color:#00ff99;
+font-size:12px;
 }
 
-#market-tape {
-  position: absolute;
-  top: 89px;
-  left: 0;
-  right: 0;
-  z-index: 29;
-  background: rgba(0, 0, 0, 0.95);
-  border-bottom: 1px solid #1f3f34;
-  color: #00ff99;
-  padding: 8px 16px;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#sidebar{
+position:absolute;
+
+top:110px;
+left:10px;
+
+width:200px;
+
+background:rgba(0,0,0,.7);
+border:1px solid #00ff99;
+
+border-radius:10px;
+
+padding:10px;
+
+z-index:28;
 }
 
-#sidebar {
-  position: absolute;
-  top: 132px;
-  left: 12px;
-  z-index: 25;
-  width: 280px;
-  background: rgba(0, 0, 0, 0.88);
-  border: 1px solid #00ff99;
-  border-radius: 10px;
-  padding: 14px 16px;
-  box-sizing: border-box;
+.sidebar-header{
+display:flex;
+justify-content:space-between;
+color:#00ff99;
+font-weight:bold;
+margin-bottom:10px;
 }
 
-.sidebar-title {
-  color: #00ff99;
-  font-weight: bold;
-  margin-bottom: 14px;
-  font-size: 14px;
+.layer{
+display:block;
+margin:8px 0;
+font-size:13px;
 }
 
-.layer-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0;
-  color: #d8fff0;
-  font-size: 13px;
+#collapse-btn{
+background:black;
+color:#00ff99;
+border:1px solid #00ff99;
+border-radius:4px;
+cursor:pointer;
 }
 
-.layer-item input {
-  accent-color: #00ff99;
+.marker{
+width:10px;
+height:10px;
+background:red;
+border-radius:50%;
+box-shadow:0 0 15px red;
 }
 
-.sidebar-note {
-  margin-top: 16px;
-  color: #9cc7b6;
-  font-size: 11px;
-  line-height: 1.5;
+.aircraft{
+width:12px;
+height:12px;
+background:#00ccff;
+border-radius:50%;
+box-shadow:0 0 10px #00ccff;
 }
 
-#map {
-  position: absolute;
-  top: 122px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-.military-marker {
-  width: 12px;
-  height: 12px;
-  background: #ff0000;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  box-shadow:
-    0 0 10px #ff0000,
-    0 0 20px #ff0000,
-    0 0 40px rgba(255, 0, 0, 0.7);
-}
-
-.maplibregl-popup-content {
-  background: #081018;
-  color: #eafff5;
-  border: 1px solid #00ff99;
-  font-family: "Courier New", monospace;
-  border-radius: 8px;
-}
-
-.maplibregl-popup-close-button {
-  color: #00ff99;
-  font-size: 18px;
-}
-
-.popup-title {
-  color: #00ff99;
-  margin: 0 0 10px 0;
-  font-size: 16px;
-}
-
-.popup-row {
-  margin: 6px 0;
-  line-height: 1.4;
-}
-
-.popup-label {
-  color: #8cffc8;
-  font-weight: bold;
-}
-
-@media (max-width: 900px) {
-  #header {
-    height: auto;
-    min-height: 88px;
-    padding: 12px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  #market-tape {
-    top: 118px;
-  }
-
-  #sidebar {
-    top: 160px;
-    width: 240px;
-  }
-
-  #map {
-    top: 150px;
-  }
-
-  .header-left h1 {
-    font-size: 22px;
-  }
-
-  .header-right {
-    flex-wrap: wrap;
-  }
+.conflict{
+width:12px;
+height:12px;
+background:orange;
+border-radius:50%;
+box-shadow:0 0 10px orange;
 }
