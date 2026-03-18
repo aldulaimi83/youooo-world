@@ -1,5 +1,5 @@
 const BACKEND_BASE = "https://youooo-world-backend.youooo.workers.dev";
-const FINNHUB_API_KEY = "d6s99q9r01qj447aq9h0d6s99q9r01qj447aq9hg";
+const FINNHUB_API_KEY = "REPLACE_WITH_YOUR_FINNHUB_KEY";
 const REFRESH_MS = 60000;
 
 const map = new maplibregl.Map({
