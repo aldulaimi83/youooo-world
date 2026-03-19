@@ -49,8 +49,13 @@ function setupModal() {
   const closeBtn = document.getElementById("closeModalBtn");
   const backdrop = document.getElementById("modalBackdrop");
 
-  closeBtn.addEventListener("click", closeSignalModal);
-  backdrop.addEventListener("click", closeSignalModal);
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeSignalModal);
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener("click", closeSignalModal);
+  }
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
@@ -105,7 +110,10 @@ async function loadAllData() {
 
 function setUpdatedTime() {
   const now = new Date();
-  document.getElementById("updatedAt").textContent = `UPDATED: ${now.toLocaleString()}`;
+  const el = document.getElementById("updatedAt");
+  if (el) {
+    el.textContent = `UPDATED: ${now.toLocaleString()}`;
+  }
 }
 
 async function fetchJson(url) {
@@ -118,6 +126,8 @@ async function fetchJson(url) {
 
 async function loadWatchlist() {
   const container = document.getElementById("watchlistGrid");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading watchlist...</div>`;
 
   try {
@@ -131,8 +141,8 @@ async function loadWatchlist() {
 
     container.innerHTML = quotes.map((quote) => {
       const changeClass =
-        quote.percentChange > 0 ? "positive" :
-        quote.percentChange < 0 ? "negative" : "neutral";
+        Number(quote.percentChange) > 0 ? "positive" :
+        Number(quote.percentChange) < 0 ? "negative" : "neutral";
 
       return `
         <div class="quote-card">
@@ -148,13 +158,15 @@ async function loadWatchlist() {
 
     renderMarketMarkers(quotes);
   } catch (error) {
-    console.error(error);
+    console.error("Watchlist error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load watchlist.</div>`;
   }
 }
 
 async function loadMarketMovers() {
   const container = document.getElementById("marketMovers");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading movers...</div>`;
 
   try {
@@ -168,8 +180,8 @@ async function loadMarketMovers() {
 
     container.innerHTML = items.map((item) => {
       const cls =
-        item.percentChange > 0 ? "positive" :
-        item.percentChange < 0 ? "negative" : "neutral";
+        Number(item.percentChange) > 0 ? "positive" :
+        Number(item.percentChange) < 0 ? "negative" : "neutral";
 
       return `
         <div class="list-item">
@@ -181,13 +193,15 @@ async function loadMarketMovers() {
       `;
     }).join("");
   } catch (error) {
-    console.error(error);
+    console.error("Movers error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load movers.</div>`;
   }
 }
 
 async function loadMarketNews() {
   const container = document.getElementById("marketNews");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading market news...</div>`;
 
   try {
@@ -201,13 +215,15 @@ async function loadMarketNews() {
 
     container.innerHTML = items.slice(0, 8).map(renderNewsItem).join("");
   } catch (error) {
-    console.error(error);
+    console.error("Market news error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load market news.</div>`;
   }
 }
 
 async function loadJobsFeed() {
   const container = document.getElementById("jobsFeed");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading jobs intelligence...</div>`;
 
   try {
@@ -221,13 +237,15 @@ async function loadJobsFeed() {
 
     container.innerHTML = items.map(renderNewsItem).join("");
   } catch (error) {
-    console.error(error);
+    console.error("Jobs feed error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load jobs intelligence.</div>`;
   }
 }
 
 async function loadAIFeed() {
   const container = document.getElementById("aiFeed");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading AI alerts...</div>`;
 
   try {
@@ -241,13 +259,15 @@ async function loadAIFeed() {
 
     container.innerHTML = items.map(renderNewsItem).join("");
   } catch (error) {
-    console.error(error);
+    console.error("AI feed error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load AI alerts.</div>`;
   }
 }
 
 async function loadSignalAlerts() {
   const container = document.getElementById("liveAlerts");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading alerts...</div>`;
 
   try {
@@ -273,13 +293,15 @@ async function loadSignalAlerts() {
       return `<div class="alert-item">${emoji} ${content}</div>`;
     }).join("");
   } catch (error) {
-    console.error(error);
+    console.error("Signal alerts error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load alerts.</div>`;
   }
 }
 
 async function loadTopSignals() {
   const container = document.getElementById("topSignalsList");
+  if (!container) return;
+
   container.innerHTML = `<div class="empty-state">Loading top signals...</div>`;
 
   try {
@@ -302,7 +324,7 @@ async function loadTopSignals() {
 
       const title = escapeHtml(item.title || "Untitled signal");
       const summary = escapeHtml((item.summary || "").slice(0, 140));
-      const time = item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown time";
+      const time = formatTimestamp(item.timestamp);
 
       return `
         <div class="top-signal-item" data-index="${index}">
@@ -326,7 +348,7 @@ async function loadTopSignals() {
 
     attachTopSignalEvents();
   } catch (error) {
-    console.error(error);
+    console.error("Top signals error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load top signals.</div>`;
   }
 }
@@ -361,6 +383,10 @@ function openSignalModal(signal) {
   const confidence = document.getElementById("modalConfidence");
   const sourceLink = document.getElementById("modalSourceLink");
 
+  if (!modal || !title || !meta || !summary || !impactList || !watchList || !confidence || !sourceLink) {
+    return;
+  }
+
   const score = computeSignalScore(signal);
   const confidenceLabel = score >= 85 ? "High" : score >= 70 ? "Medium" : "Watch";
   const insights = buildWhyItMatters(signal);
@@ -387,6 +413,8 @@ function openSignalModal(signal) {
 
 function closeSignalModal() {
   const modal = document.getElementById("signalModal");
+  if (!modal) return;
+
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
 }
@@ -446,7 +474,6 @@ function pickWatchList(text, defaults) {
 
 function computeSignalScore(signal) {
   let score = 60;
-
   const title = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
 
   if (signal.type === "market") score += 10;
@@ -462,9 +489,13 @@ function computeSignalScore(signal) {
     if (title.includes(word)) score += 2;
   });
 
-  const ageHours = signal.timestamp
-    ? Math.max(0, (Date.now() - signal.timestamp) / (1000 * 60 * 60))
-    : 12;
+  let ageHours = 12;
+  if (signal.timestamp) {
+    const ts = normalizeTimestamp(signal.timestamp);
+    if (ts !== null) {
+      ageHours = Math.max(0, (Date.now() - ts) / (1000 * 60 * 60));
+    }
+  }
 
   if (ageHours < 6) score += 8;
   else if (ageHours < 24) score += 4;
@@ -507,7 +538,7 @@ function renderNewsItem(item) {
   const source = escapeHtml(item.source || "Unknown source");
   const summary = escapeHtml((item.summary || "").slice(0, 200));
   const url = item.url || "#";
-  const time = item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown time";
+  const time = formatTimestamp(item.timestamp);
 
   return `
     <div class="news-item">
@@ -562,6 +593,30 @@ function renderMarketMarkers(quotes) {
   });
 
   toggleLayers();
+}
+
+function normalizeTimestamp(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && value.trim() !== "") {
+      return numeric;
+    }
+
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function formatTimestamp(value) {
+  const ts = normalizeTimestamp(value);
+  if (ts === null) return "Unknown time";
+  return new Date(ts).toLocaleString();
 }
 
 function formatSignalType(type) {
