@@ -1,25 +1,343 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Youooo World</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-
-  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YOUOOO Radar</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand">YOUOOO RADAR</div>
+        <div class="subtitle">Layoff risk, hiring shifts, AI demand, and market signals</div>
+      </div>
 
-<div id="header">
-  <h2>Youooo World 🌍</h2>
-  <p>Global monitoring system</p>
-</div>
+      <nav class="top-nav">
+        <a href="#overviewTab">Overview</a>
+        <a href="#companiesTab">Companies</a>
+        <a href="#marketsTab">Markets</a>
+        <a href="#aiTab">AI</a>
+        <a href="#riskTab">Risk</a>
+      </nav>
 
-<div id="map"></div>
+      <div class="topbar-right">
+        <div class="status-pill online">STATUS: LIVE</div>
+        <div class="status-pill gold">PRODUCT: V5</div>
+        <div class="status-pill" id="updatedAt">UPDATED: --</div>
+      </div>
+    </header>
 
-<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script src="script.js"></script>
+    <main class="page-shell">
+      <section class="hero">
+        <div class="hero-main card">
+          <div class="hero-kicker">CORE PRODUCT</div>
+          <h1>Layoff Radar + Hiring Shift Intelligence</h1>
+          <p class="hero-copy">
+            Track which companies look pressured, where hiring is still strong, and how job-market shifts connect to AI and market narratives.
+          </p>
 
+          <div class="hero-stats" id="heroStats">
+            <div class="stat-card">
+              <div class="stat-label">High Risk Companies</div>
+              <div class="stat-value" id="statHighRisk">--</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Hiring Opportunities</div>
+              <div class="stat-value" id="statHiring">--</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">AI Demand Signals</div>
+              <div class="stat-value" id="statAI">--</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Risk Headlines</div>
+              <div class="stat-value" id="statRisk">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-side card">
+          <div class="section-headline-row">
+            <h2>What changed today</h2>
+            <span class="trend-pill danger">Action Feed</span>
+          </div>
+          <div id="liveAlerts" class="alerts-list">
+            <div class="empty-state">Loading daily changes...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="main-column">
+          <nav class="tabs">
+            <button class="tab-btn active" data-tab="overviewTab">Overview</button>
+            <button class="tab-btn" data-tab="companiesTab">Companies</button>
+            <button class="tab-btn" data-tab="marketsTab">Markets</button>
+            <button class="tab-btn" data-tab="aiTab">AI</button>
+            <button class="tab-btn" data-tab="riskTab">Risk</button>
+          </nav>
+
+          <section id="overviewTab" class="tab-content active">
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>Top Signals Now</h2>
+                <span class="trend-pill neutral">Ranked Feed</span>
+              </div>
+
+              <div class="signal-filters" id="signalFilters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="jobs">Jobs</button>
+                <button class="filter-btn" data-filter="market">Markets</button>
+                <button class="filter-btn" data-filter="ai">AI</button>
+                <button class="filter-btn" data-filter="risk">Risk</button>
+              </div>
+
+              <div id="topSignalsList" class="top-signals-list">
+                <div class="empty-state">Loading top signals...</div>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Company Risk Scoreboard</h2>
+                  <span class="trend-pill warning">Most Important</span>
+                </div>
+                <div id="companyRiskBoard" class="risk-board">
+                  <div class="empty-state">Building company risk board...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Who Is Hiring Instead</h2>
+                  <span class="trend-pill success">Opportunity</span>
+                </div>
+                <div id="hiringShift" class="shift-list">
+                  <div class="empty-state">Finding hiring shifts...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Sector Heatmap</h2>
+                  <span class="trend-pill neutral">Fast Read</span>
+                </div>
+                <div id="sectorHeatmap" class="heatmap-grid">
+                  <div class="empty-state">Loading sector heatmap...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Layoff Timeline</h2>
+                  <span class="trend-pill danger">Pressure</span>
+                </div>
+                <div id="layoffTimeline" class="timeline">
+                  <div class="empty-state">Loading timeline...</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="companiesTab" class="tab-content">
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>Company Intelligence</h2>
+                <span class="trend-pill gold">Sellable Direction</span>
+              </div>
+              <p class="card-subtitle">
+                A company-first view is what makes the product useful. This is where people quickly see risk, momentum, and where talent is likely moving.
+              </p>
+
+              <div id="companyCards" class="company-cards">
+                <div class="empty-state">Building company intelligence cards...</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="marketsTab" class="tab-content">
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Watchlist</h2>
+                  <span class="trend-pill neutral">Market</span>
+                </div>
+                <div id="watchlistGrid" class="watchlist-grid">
+                  <div class="empty-state">Loading watchlist...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Market Movers</h2>
+                  <span class="trend-pill neutral">Momentum</span>
+                </div>
+                <div id="marketMovers" class="list-block">
+                  <div class="empty-state">Loading movers...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>Cause → Effect Engine</h2>
+                <span class="trend-pill warning">Why Markets Move</span>
+              </div>
+              <div id="impactEngine" class="impact-grid">
+                <div class="empty-state">Building market impact engine...</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>Market Feed</h2>
+                <span class="trend-pill neutral">News</span>
+              </div>
+              <div id="marketNews" class="news-feed">
+                <div class="empty-state">Loading market feed...</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="aiTab" class="tab-content">
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>AI Infra Signals</h2>
+                  <span class="trend-pill success">Growth</span>
+                </div>
+                <div id="aiSignalsBoard" class="signal-summary-grid">
+                  <div class="empty-state">Loading AI signals...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Chip Tracker</h2>
+                  <span class="trend-pill warning">Semis</span>
+                </div>
+                <div id="chipWarTracker" class="tracker-list">
+                  <div class="empty-state">Loading chip tracker...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>AI Feed</h2>
+                <span class="trend-pill success">Live</span>
+              </div>
+              <div id="aiFeed" class="news-feed">
+                <div class="empty-state">Loading AI feed...</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="riskTab" class="tab-content">
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Regional Risk Levels</h2>
+                  <span class="trend-pill danger">Global Risk</span>
+                </div>
+                <div id="regionalRiskBoard" class="risk-regions">
+                  <div class="empty-state">Loading regional risk levels...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Conflict → Market Impact</h2>
+                  <span class="trend-pill warning">Spillover</span>
+                </div>
+                <div id="conflictImpact" class="impact-grid">
+                  <div class="empty-state">Loading conflict impact...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-headline-row">
+                <h2>Risk Feed</h2>
+                <span class="trend-pill danger">Watch</span>
+              </div>
+              <div id="riskFeed" class="news-feed">
+                <div class="empty-state">Loading risk feed...</div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side-column">
+          <div class="card sticky-card">
+            <div class="section-headline-row">
+              <h2>Daily Brief</h2>
+              <span class="trend-pill gold">Summary</span>
+            </div>
+            <div id="dailyBrief" class="brief-list">
+              <div class="empty-state">Building daily brief...</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-headline-row">
+              <h2>Jobs Feed</h2>
+              <span class="trend-pill danger">Radar</span>
+            </div>
+            <div id="jobsFeed" class="news-feed compact-feed">
+              <div class="empty-state">Loading jobs feed...</div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="site-footer">
+        <span>Built by Ahmed Aldulaimi</span>
+        <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </footer>
+    </main>
+  </div>
+
+  <div id="signalModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="closeModalBtn" aria-label="Close">×</button>
+
+      <div class="modal-kicker">WHY IT MATTERS</div>
+      <h2 id="modalTitle">Signal Details</h2>
+      <div class="modal-meta" id="modalMeta">Loading...</div>
+
+      <div class="modal-section">
+        <h3>What happened</h3>
+        <p id="modalSummary">—</p>
+      </div>
+
+      <div class="modal-section">
+        <h3>Impact</h3>
+        <ul id="modalImpactList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Watch</h3>
+        <ul id="modalWatchList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Confidence</h3>
+        <div id="modalConfidence" class="confidence-badge">Medium</div>
+      </div>
+
+      <div class="modal-actions">
+        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-link">Open source</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
