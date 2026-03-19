@@ -19,7 +19,7 @@
     <header class="topbar">
       <div class="brand-block">
         <div class="brand">YOUOOO</div>
-        <div class="subtitle">World → Markets → Jobs → AI Intelligence</div>
+        <div class="subtitle">Top world, market, jobs, and AI signals</div>
       </div>
 
       <nav class="top-nav">
@@ -60,7 +60,7 @@
           </div>
 
           <p class="panel-note">
-            Visualize world events, market reaction, and company signals in one place.
+            Track world events, company signals, and market reaction in one view.
           </p>
         </div>
 
@@ -81,10 +81,17 @@
             <div>
               <h2>Top Signals Now</h2>
               <p class="card-subtitle">
-                Ranked events and moves across markets, jobs, and AI.
+                Ranked signals with severity, category, and why they matter.
               </p>
             </div>
-            <div class="beta-badge">LIVE BETA</div>
+            <div class="beta-badge">V3</div>
+          </div>
+
+          <div class="signal-filters" id="signalFilters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="market">Markets</button>
+            <button class="filter-btn" data-filter="jobs">Jobs</button>
+            <button class="filter-btn" data-filter="ai">AI</button>
           </div>
 
           <div id="topSignalsList" class="top-signals-list">
@@ -102,7 +109,7 @@
           <div class="card">
             <h2>Market Snapshot</h2>
             <p class="card-subtitle">
-              Track price action, movers, and market-moving headlines.
+              Watch price action, movers, and headlines tied to market sentiment.
             </p>
 
             <h3>Top Watchlist</h3>
@@ -155,7 +162,7 @@
               <span class="trend-pill success">Trend: Strong Growth</span>
             </div>
             <p class="card-subtitle">
-              AI launches, semiconductor demand, cloud competition, and chip signals.
+              AI launches, chip demand, cloud competition, and infrastructure signals.
             </p>
 
             <div class="chips">
@@ -189,7 +196,6 @@
 
       <div class="modal-kicker">WHY IT MATTERS</div>
       <h2 id="modalTitle">Signal Details</h2>
-
       <div class="modal-meta" id="modalMeta">Loading...</div>
 
       <div class="modal-section">

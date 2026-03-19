@@ -294,7 +294,8 @@ body {
 }
 
 .tag-row,
-.chips {
+.chips,
+.signal-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -302,12 +303,24 @@ body {
 }
 
 .tag,
-.chip {
+.chip,
+.filter-btn {
   border: 1px solid var(--border);
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(17, 24, 37, 0.9);
   font-size: 0.85rem;
+  color: var(--text);
+}
+
+.filter-btn {
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  border-color: rgba(119, 182, 255, 0.45);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(119, 182, 255, 0.2) inset;
 }
 
 .watchlist-grid {
@@ -425,6 +438,39 @@ body {
 
 .signal-type.ai {
   color: var(--accent-2);
+}
+
+.signal-row-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.severity-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.74rem;
+  border: 1px solid transparent;
+}
+
+.severity-badge.high {
+  color: var(--danger);
+  background: rgba(40, 12, 18, 0.85);
+  border-color: rgba(255, 107, 125, 0.25);
+}
+
+.severity-badge.medium {
+  color: var(--warning);
+  background: rgba(38, 24, 10, 0.85);
+  border-color: rgba(255, 184, 107, 0.22);
+}
+
+.severity-badge.watch {
+  color: var(--accent);
+  background: rgba(16, 28, 45, 0.95);
+  border-color: rgba(119, 182, 255, 0.22);
 }
 
 .signal-footer {

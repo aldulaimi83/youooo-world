@@ -9,32 +9,19 @@ const CORS_HEADERS = {
 const WATCHLIST = ["SPY", "QQQ", "AMD", "NVDA", "TSLA", "AAPL", "MSFT", "META", "AMZN", "GOOGL"];
 
 const JOB_KEYWORDS = [
-  "layoff",
-  "layoffs",
-  "job cut",
-  "job cuts",
-  "workforce",
-  "restructuring",
-  "headcount",
-  "hiring freeze",
-  "staff reduction",
-  "downsizing"
+  "layoff", "layoffs", "job cut", "job cuts", "workforce",
+  "restructuring", "headcount", "hiring freeze", "staff reduction",
+  "downsizing", "hiring slowdown", "cost cuts", "job reduction"
 ];
 
 const AI_KEYWORDS = [
-  "openai",
-  "nvidia",
-  "amd",
-  "microsoft",
-  "google",
-  "meta",
-  "artificial intelligence",
-  "ai",
-  "chip",
-  "inference",
-  "training",
-  "datacenter",
-  "gpu"
+  "openai", "nvidia", "amd", "microsoft", "google", "meta",
+  "artificial intelligence", "ai", "chip", "gpu", "inference",
+  "training", "datacenter", "cloud ai", "model", "llm", "foundation model"
+];
+
+const AI_NEGATIVE_KEYWORDS = [
+  "automobile", "auto sales", "gas supply", "tourism", "election polling"
 ];
 
 export default {
@@ -57,68 +44,38 @@ export default {
 
       if (path === "/api/watchlist") {
         const data = await getWatchlist(env);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data });
       }
 
       if (path === "/api/movers") {
         const data = await getMovers(env);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data });
       }
 
       if (path === "/api/news") {
         const category = url.searchParams.get("category") || "general";
         const news = await getNews(env, category);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data: news
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data: news });
       }
 
       if (path === "/api/jobs") {
         const jobs = await getJobsSignals(env);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data: jobs
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data: jobs });
       }
 
       if (path === "/api/ai") {
         const ai = await getAISignals(env);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data: ai
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data: ai });
       }
 
       if (path === "/api/signals") {
         const signals = await getTopSignals(env);
-        return json({
-          ok: true,
-          updatedAt: new Date().toISOString(),
-          data: signals
-        });
+        return json({ ok: true, updatedAt: new Date().toISOString(), data: signals });
       }
 
       return json({ ok: false, error: "Not found" }, 404);
     } catch (error) {
-      return json(
-        {
-          ok: false,
-          error: error?.message || "Unknown server error"
-        },
-        500
-      );
+      return json({ ok: false, error: error?.message || "Unknown server error" }, 500);
     }
   }
 };
@@ -148,9 +105,10 @@ async function getJobsSignals(env) {
     .map(normalizeNews)
     .map((item) => ({
       ...item,
-      score: keywordScore(`${item.title} ${item.summary}`, JOB_KEYWORDS)
+      score: keywordScore(`${item.title} ${item.summary}`, JOB_KEYWORDS),
+      type: "jobs"
     }))
-    .filter((item) => item.score > 0)
+    .filter((item) => item.score >= 10)
     .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
     .slice(0, 10);
 }
@@ -162,9 +120,10 @@ async function getAISignals(env) {
     .map(normalizeNews)
     .map((item) => ({
       ...item,
-      score: keywordScore(`${item.title} ${item.summary}`, AI_KEYWORDS)
+      score: aiScore(`${item.title} ${item.summary}`),
+      type: "ai"
     }))
-    .filter((item) => item.score > 0)
+    .filter((item) => item.score >= 12)
     .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
     .slice(0, 10);
 }
@@ -179,41 +138,45 @@ async function getTopSignals(env) {
   const signals = [];
 
   for (const mover of movers.slice(0, 4)) {
+    const basePriority = Math.abs(mover.percentChange);
     signals.push({
       type: "market",
-      priority: Math.abs(mover.percentChange),
+      priority: 40 + basePriority,
       title: `${mover.symbol} moved ${signed(mover.percentChange)}%`,
       summary: `Price ${mover.price} | Change ${signed(mover.change)} (${signed(mover.percentChange)}%)`,
       url: null,
+      source: "Market quote",
       timestamp: Date.now()
     });
   }
 
-  for (const item of jobs.slice(0, 3)) {
+  for (const item of jobs.slice(0, 4)) {
     signals.push({
       type: "jobs",
-      priority: 50 + item.score,
+      priority: 55 + item.score,
       title: item.title,
       summary: item.summary,
       url: item.url,
+      source: item.source,
       timestamp: item.timestamp
     });
   }
 
-  for (const item of ai.slice(0, 3)) {
+  for (const item of ai.slice(0, 4)) {
     signals.push({
       type: "ai",
-      priority: 40 + item.score,
+      priority: 52 + item.score,
       title: item.title,
       summary: item.summary,
       url: item.url,
+      source: item.source,
       timestamp: item.timestamp
     });
   }
 
   return signals
     .sort((a, b) => b.priority - a.priority || b.timestamp - a.timestamp)
-    .slice(0, 10);
+    .slice(0, 12);
 }
 
 async function fetchQuote(env, symbol) {
@@ -265,6 +228,21 @@ function keywordScore(text, keywords) {
 
   for (const word of keywords) {
     if (haystack.includes(word)) score += 10;
+  }
+
+  return score;
+}
+
+function aiScore(text) {
+  const haystack = String(text || "").toLowerCase();
+  let score = 0;
+
+  for (const word of AI_KEYWORDS) {
+    if (haystack.includes(word)) score += 8;
+  }
+
+  for (const word of AI_NEGATIVE_KEYWORDS) {
+    if (haystack.includes(word)) score -= 10;
   }
 
   return score;

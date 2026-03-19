@@ -5,10 +5,12 @@ let earthquakeLayer;
 let marketMarkersLayer;
 let activeLayer = "earthquakes";
 let cachedSignals = [];
+let activeSignalFilter = "all";
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupLayerButtons();
+  setupSignalFilters();
   setupModal();
   initMap();
   await loadAllData();
@@ -45,22 +47,27 @@ function setupLayerButtons() {
   });
 }
 
+function setupSignalFilters() {
+  const buttons = document.querySelectorAll(".filter-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeSignalFilter = btn.dataset.filter;
+      renderTopSignals();
+    });
+  });
+}
+
 function setupModal() {
   const closeBtn = document.getElementById("closeModalBtn");
   const backdrop = document.getElementById("modalBackdrop");
 
-  if (closeBtn) {
-    closeBtn.addEventListener("click", closeSignalModal);
-  }
-
-  if (backdrop) {
-    backdrop.addEventListener("click", closeSignalModal);
-  }
+  if (closeBtn) closeBtn.addEventListener("click", closeSignalModal);
+  if (backdrop) backdrop.addEventListener("click", closeSignalModal);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeSignalModal();
-    }
+    if (event.key === "Escape") closeSignalModal();
   });
 }
 
@@ -111,9 +118,7 @@ async function loadAllData() {
 function setUpdatedTime() {
   const now = new Date();
   const el = document.getElementById("updatedAt");
-  if (el) {
-    el.textContent = `UPDATED: ${now.toLocaleString()}`;
-  }
+  if (el) el.textContent = `UPDATED: ${now.toLocaleString()}`;
 }
 
 async function fetchJson(url) {
@@ -279,7 +284,7 @@ async function loadSignalAlerts() {
       return;
     }
 
-    container.innerHTML = items.map((item) => {
+    container.innerHTML = items.slice(0, 8).map((item) => {
       const emoji =
         item.type === "market" ? "📈" :
         item.type === "jobs" ? "💼" :
@@ -306,51 +311,69 @@ async function loadTopSignals() {
 
   try {
     const payload = await fetchJson(apiUrl("/api/signals"));
-    const items = (payload.data || []).slice(0, 8);
-    cachedSignals = items;
-
-    if (!items.length) {
-      container.innerHTML = `<div class="empty-state">No top signals available.</div>`;
-      return;
-    }
-
-    container.innerHTML = items.map((item, index) => {
-      const score = computeSignalScore(item);
-      const typeLabel = item.type === "market"
-        ? "Market"
-        : item.type === "jobs"
-        ? "Jobs"
-        : "AI";
-
-      const title = escapeHtml(item.title || "Untitled signal");
-      const summary = escapeHtml((item.summary || "").slice(0, 140));
-      const time = formatTimestamp(item.timestamp);
-
-      return `
-        <div class="top-signal-item" data-index="${index}">
-          <div class="signal-type ${escapeHtml(item.type || "market")}">${typeLabel}</div>
-
-          <div class="top-signal-head">
-            <div>
-              <div class="top-signal-title">${title}</div>
-              <div class="item-meta">${summary}</div>
-            </div>
-            <div class="top-signal-score">Score ${score}</div>
-          </div>
-
-          <div class="signal-footer">
-            <div class="news-source">${time}</div>
-            <a href="#" class="why-link" data-index="${index}">Why it matters</a>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    attachTopSignalEvents();
+    cachedSignals = payload.data || [];
+    renderTopSignals();
   } catch (error) {
     console.error("Top signals error:", error);
     container.innerHTML = `<div class="empty-state">Failed to load top signals.</div>`;
   }
+}
+
+function renderTopSignals() {
+  const container = document.getElementById("topSignalsList");
+  if (!container) return;
+
+  let items = [...cachedSignals];
+
+  if (activeSignalFilter !== "all") {
+    items = items.filter((item) => item.type === activeSignalFilter);
+  }
+
+  items = items.slice(0, 8);
+
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-state">No signals for this filter.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((item, index) => {
+    const originalIndex = cachedSignals.indexOf(item);
+    const score = computeSignalScore(item);
+    const severity = getSeverity(score);
+    const typeLabel = item.type === "market"
+      ? "Market"
+      : item.type === "jobs"
+      ? "Jobs"
+      : "AI";
+
+    const title = escapeHtml(item.title || "Untitled signal");
+    const summary = escapeHtml((item.summary || "").slice(0, 140));
+    const time = formatTimestamp(item.timestamp);
+
+    return `
+      <div class="top-signal-item" data-index="${originalIndex}">
+        <div class="signal-row-badges">
+          <div class="signal-type ${escapeHtml(item.type || "market")}">${typeLabel}</div>
+          <div class="severity-badge ${severity.className}">${severity.label}</div>
+        </div>
+
+        <div class="top-signal-head">
+          <div>
+            <div class="top-signal-title">${title}</div>
+            <div class="item-meta">${summary}</div>
+          </div>
+          <div class="top-signal-score">Score ${score}</div>
+        </div>
+
+        <div class="signal-footer">
+          <div class="news-source">${time}</div>
+          <a href="#" class="why-link" data-index="${originalIndex}">Why it matters</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  attachTopSignalEvents();
 }
 
 function attachTopSignalEvents() {
@@ -425,9 +448,9 @@ function buildWhyItMatters(signal) {
   if (signal.type === "market") {
     return {
       impact: [
-        "Large market moves often signal sentiment changes or reaction to breaking news.",
-        "Semiconductors, tech indexes, and momentum names may react together.",
-        "Watch for follow-through into the next session."
+        "Large market moves often signal changing risk sentiment or reaction to fresh news.",
+        "Semiconductors, indexes, and momentum names can move together when leadership changes.",
+        "Watch for continuation or reversal in the next session."
       ],
       watch: pickWatchList(text, ["AMD", "NVDA", "QQQ", "SPY", "TSLA", "AAPL"])
     };
@@ -437,8 +460,8 @@ function buildWhyItMatters(signal) {
     return {
       impact: [
         "Workforce cuts can signal slowing growth, cost pressure, or margin defense.",
-        "Layoff signals often affect tech sentiment and hiring confidence.",
-        "Repeated restructuring headlines can matter more than one headline alone."
+        "Hiring slowdowns often affect broader tech sentiment.",
+        "Repeated restructuring headlines usually matter more than a single headline."
       ],
       watch: pickWatchList(text, ["AMZN", "GOOGL", "META", "MSFT", "INTC", "AMD"])
     };
@@ -447,8 +470,8 @@ function buildWhyItMatters(signal) {
   return {
     impact: [
       "AI headlines can move semiconductors, cloud names, and infrastructure suppliers.",
-      "Model launches and GPU demand usually benefit the broader AI trade.",
-      "Chip, datacenter, and cloud spending often move together."
+      "Model launches and GPU demand often support the broader AI trade.",
+      "Chip, datacenter, and cloud spending frequently move together."
     ],
     watch: pickWatchList(text, ["NVDA", "AMD", "MSFT", "GOOGL", "META", "SMH"])
   };
@@ -458,10 +481,10 @@ function pickWatchList(text, defaults) {
   const matches = [];
 
   if (text.includes("nvidia")) matches.push("Watch NVDA for semiconductor momentum.");
-  if (text.includes("amd")) matches.push("Watch AMD for AI/compute spillover.");
+  if (text.includes("amd")) matches.push("Watch AMD for AI and compute spillover.");
   if (text.includes("microsoft")) matches.push("Watch MSFT for cloud and AI integration.");
   if (text.includes("google")) matches.push("Watch GOOGL for AI platform response.");
-  if (text.includes("amazon")) matches.push("Watch AMZN for cost control and hiring signals.");
+  if (text.includes("amazon")) matches.push("Watch AMZN for cost-control and hiring signals.");
   if (text.includes("meta")) matches.push("Watch META for AI capex and restructuring signals.");
   if (text.includes("oil")) matches.push("Watch energy names if geopolitical risk stays elevated.");
 
@@ -474,7 +497,7 @@ function pickWatchList(text, defaults) {
 
 function computeSignalScore(signal) {
   let score = 60;
-  const title = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
 
   if (signal.type === "market") score += 10;
   if (signal.type === "jobs") score += 12;
@@ -482,11 +505,12 @@ function computeSignalScore(signal) {
 
   const importantWords = [
     "nvidia", "amd", "openai", "microsoft", "google", "meta",
-    "layoff", "restructuring", "ai", "chip", "demand", "surge"
+    "layoff", "restructuring", "ai", "chip", "demand", "surge",
+    "guidance", "cloud", "gpu", "hiring"
   ];
 
   importantWords.forEach((word) => {
-    if (title.includes(word)) score += 2;
+    if (text.includes(word)) score += 2;
   });
 
   let ageHours = 12;
@@ -501,6 +525,16 @@ function computeSignalScore(signal) {
   else if (ageHours < 24) score += 4;
 
   return Math.min(99, Math.round(score));
+}
+
+function getSeverity(score) {
+  if (score >= 85) {
+    return { label: "High", className: "high" };
+  }
+  if (score >= 72) {
+    return { label: "Medium", className: "medium" };
+  }
+  return { label: "Watch", className: "watch" };
 }
 
 async function loadEarthquakes() {
@@ -521,12 +555,12 @@ async function loadEarthquakes() {
         opacity: 0.9,
         fillOpacity: 0.5
       })
-      .bindPopup(`
-        <strong>${escapeHtml(place)}</strong><br>
-        Magnitude: ${mag}<br>
-        Depth: ${depth} km
-      `)
-      .addTo(earthquakeLayer);
+        .bindPopup(`
+          <strong>${escapeHtml(place)}</strong><br>
+          Magnitude: ${mag}<br>
+          Depth: ${depth} km
+        `)
+        .addTo(earthquakeLayer);
     });
   } catch (error) {
     console.error("Earthquake layer failed:", error);
