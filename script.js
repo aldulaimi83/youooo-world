@@ -7,9 +7,7 @@ const state = {
   ai: [],
   movers: [],
   watchlist: [],
-  activeFilter: "all",
-  map: null,
-  markersLayer: null
+  activeFilter: "all"
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,15 +15,12 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFilters();
   initModal();
-  initMap();
-  initLayerButtons();
   loadAllData();
 });
 
 function setUpdatedTime() {
   const el = document.getElementById("updatedAt");
   if (!el) return;
-
   const now = new Date();
   el.textContent = `UPDATED: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
 }
@@ -40,8 +35,7 @@ function initTabs() {
       tabs.forEach((tab) => tab.classList.remove("active"));
 
       button.classList.add("active");
-      const tabId = button.dataset.tab;
-      const target = document.getElementById(tabId);
+      const target = document.getElementById(button.dataset.tab);
       if (target) target.classList.add("active");
     });
   });
@@ -76,21 +70,17 @@ function initModal() {
   const closeBtn = document.getElementById("closeModalBtn");
   const backdrop = document.getElementById("modalBackdrop");
 
-  [closeBtn, backdrop].forEach((el) => {
-    if (el) {
-      el.addEventListener("click", closeModal);
-    }
-  });
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  closeBtn?.addEventListener("click", closeModal);
+  backdrop?.addEventListener("click", closeModal);
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeModal();
   });
-
-  function closeModal() {
-    if (!modal) return;
-    modal.classList.add("hidden");
-    modal.setAttribute("aria-hidden", "true");
-  }
 
   window.__openSignalModal = openSignalModal;
 }
@@ -103,7 +93,8 @@ function openSignalModal(signal) {
   document.getElementById("modalMeta").textContent =
     `${formatCategory(signal.category)} • Score ${signal.score || 70} • ${formatDate(signal.publishedAt || signal.date)}`;
 
-  document.getElementById("modalSummary").textContent = signal.summary || "No summary available.";
+  document.getElementById("modalSummary").textContent =
+    signal.summary || "No summary available.";
 
   const impactList = document.getElementById("modalImpactList");
   const watchList = document.getElementById("modalWatchList");
@@ -142,26 +133,26 @@ async function loadAllData() {
     loadWatchlist()
   ]);
 
-  renderSignals();
+  renderHeroStats();
   renderLiveAlerts();
-  renderMarketNews();
-  renderJobsFeed();
-  renderAIFeed();
-  renderRiskFeed();
-  renderMovers();
-  renderWatchlist();
-
-  renderImpactEngine();
+  renderSignals();
   renderCompanyRiskBoard();
+  renderHiringShift();
   renderSectorHeatmap();
   renderLayoffTimeline();
-  renderHiringShift();
+  renderCompanyCards();
+  renderWatchlist();
+  renderMovers();
+  renderImpactEngine();
+  renderMarketNews();
   renderAISignalsBoard();
   renderChipWarTracker();
+  renderAIFeed();
   renderRegionalRiskBoard();
   renderConflictImpact();
-
-  renderMapMarkersForLayer("earthquakes");
+  renderRiskFeed();
+  renderJobsFeed();
+  renderDailyBrief();
 }
 
 async function fetchJson(url) {
@@ -232,43 +223,17 @@ async function loadWatchlist() {
   }
 }
 
-function renderSignals() {
-  const container = document.getElementById("topSignalsList");
-  if (!container) return;
+function renderHeroStats() {
+  const companies = buildCompanyRiskScores();
+  const highRisk = companies.filter((c) => c.score >= 70).length;
+  const hiring = buildHiringShiftData().length;
+  const aiCount = state.ai.length || fallbackAI().length;
+  const riskCount = [...state.news, ...state.ai].filter(containsRiskKeywords).length || 4;
 
-  const baseSignals = buildCombinedSignals();
-  const filtered = state.activeFilter === "all"
-    ? baseSignals
-    : baseSignals.filter((item) => item.category === state.activeFilter);
-
-  if (!filtered.length) {
-    container.innerHTML = `<div class="empty-state">No signals available.</div>`;
-    return;
-  }
-
-  container.innerHTML = filtered.slice(0, 8).map((signal) => `
-    <article class="signal-card">
-      <div class="signal-topline">
-        <span class="signal-type">${formatCategory(signal.category)}</span>
-        <span class="signal-score">Score ${signal.score}</span>
-      </div>
-      <h3 class="signal-title">${escapeHtml(signal.title)}</h3>
-      <div class="signal-summary">${escapeHtml(signal.summary || "No summary available.")}</div>
-      <div class="signal-footer">
-        <span>${formatDate(signal.publishedAt || signal.date)}</span>
-        <a class="why-link" href="#" data-signal-id="${escapeHtml(signal.id)}">Why it matters</a>
-      </div>
-    </article>
-  `).join("");
-
-  container.querySelectorAll(".why-link").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const signalId = event.currentTarget.dataset.signalId;
-      const signal = baseSignals.find((item) => item.id === signalId);
-      if (signal) openSignalModal(signal);
-    });
-  });
+  setText("statHighRisk", String(highRisk));
+  setText("statHiring", String(hiring));
+  setText("statAI", String(aiCount));
+  setText("statRisk", String(riskCount));
 }
 
 function renderLiveAlerts() {
@@ -288,97 +253,43 @@ function renderLiveAlerts() {
   `).join("");
 }
 
-function renderMarketNews() {
-  renderFeed("marketNews", state.news);
-}
-
-function renderJobsFeed() {
-  renderFeed("jobsFeed", state.jobs);
-}
-
-function renderAIFeed() {
-  renderFeed("aiFeed", state.ai);
-}
-
-function renderRiskFeed() {
-  const riskSource = state.news
-    .filter((item) => containsRiskKeywords(item))
-    .concat(state.ai.filter((item) => containsRiskKeywords(item)))
-    .slice(0, 8);
-
-  renderFeed("riskFeed", riskSource.length ? riskSource : fallbackRiskFeed());
-}
-
-function renderFeed(targetId, items) {
-  const container = document.getElementById(targetId);
+function renderSignals() {
+  const container = document.getElementById("topSignalsList");
   if (!container) return;
 
-  if (!items || !items.length) {
-    container.innerHTML = `<div class="empty-state">No feed items available.</div>`;
+  const signals = buildCombinedSignals();
+  const filtered = state.activeFilter === "all"
+    ? signals
+    : signals.filter((item) => item.category === state.activeFilter);
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state">No signals available.</div>`;
     return;
   }
 
-  container.innerHTML = items.slice(0, 8).map((item) => `
-    <article class="feed-item">
-      <h3 class="feed-title">${escapeHtml(item.title)}</h3>
-      <div class="feed-summary">${escapeHtml(item.summary || "No summary available.")}</div>
-      <div class="feed-meta">
-        <span>${formatDate(item.publishedAt || item.date)}</span>
-        <a class="why-link" href="${item.url || "#"}" target="_blank" rel="noopener noreferrer">Open source</a>
+  container.innerHTML = filtered.slice(0, 10).map((signal) => `
+    <article class="signal-card">
+      <div class="signal-topline">
+        <span class="signal-type">${formatCategory(signal.category)}</span>
+        <span class="signal-score">Score ${signal.score}</span>
+      </div>
+      <h3 class="signal-title">${escapeHtml(signal.title)}</h3>
+      <div class="signal-summary">${escapeHtml(signal.summary || "No summary available.")}</div>
+      <div class="signal-footer">
+        <span>${formatDate(signal.publishedAt || signal.date)}</span>
+        <a class="why-link" href="#" data-signal-id="${escapeHtml(signal.id)}">Why it matters</a>
       </div>
     </article>
   `).join("");
-}
 
-function renderMovers() {
-  const container = document.getElementById("marketMovers");
-  if (!container) return;
-
-  if (!state.movers.length) {
-    container.innerHTML = `<div class="empty-state">No movers data available.</div>`;
-    return;
-  }
-
-  container.innerHTML = state.movers.slice(0, 8).map((item) => `
-    <div class="mover-row">
-      <div>
-        <strong>${escapeHtml(item.symbol)}</strong>
-        <div class="row-meta">${escapeHtml(item.name || "Market mover")}</div>
-      </div>
-      <span class="mover-badge ${classForChange(item.changePercent)}">${formatPercent(item.changePercent)}</span>
-    </div>
-  `).join("");
-}
-
-function renderWatchlist() {
-  const container = document.getElementById("watchlistGrid");
-  if (!container) return;
-
-  if (!state.watchlist.length) {
-    container.innerHTML = `<div class="empty-state">No watchlist data available.</div>`;
-    return;
-  }
-
-  container.innerHTML = state.watchlist.slice(0, 8).map((item) => `
-    <div class="watch-item">
-      <div class="watch-symbol">${escapeHtml(item.symbol)}</div>
-      <div class="watch-price">${formatMoney(item.price)}</div>
-      <div class="watch-change ${classForChange(item.changePercent)}">${formatPercent(item.changePercent)}</div>
-    </div>
-  `).join("");
-}
-
-function renderImpactEngine() {
-  const container = document.getElementById("impactEngine");
-  if (!container) return;
-
-  const chains = buildImpactChains();
-  container.innerHTML = chains.map((item) => `
-    <div class="impact-item">
-      <div class="impact-chain">${escapeHtml(item.chain)}</div>
-      <div class="impact-note">${escapeHtml(item.note)}</div>
-    </div>
-  `).join("");
+  container.querySelectorAll(".why-link").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const signalId = event.currentTarget.dataset.signalId;
+      const signal = signals.find((item) => item.id === signalId);
+      if (signal) openSignalModal(signal);
+    });
+  });
 }
 
 function renderCompanyRiskBoard() {
@@ -393,6 +304,19 @@ function renderCompanyRiskBoard() {
         <div class="row-meta">${escapeHtml(item.status)}</div>
       </div>
       <span class="risk-score-badge ${riskClass(item.score)}">Risk ${item.score}</span>
+    </div>
+  `).join("");
+}
+
+function renderHiringShift() {
+  const container = document.getElementById("hiringShift");
+  if (!container) return;
+
+  const shifts = buildHiringShiftData();
+  container.innerHTML = shifts.map((item) => `
+    <div class="shift-item">
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="feed-summary">${escapeHtml(item.summary)}</div>
     </div>
   `).join("");
 }
@@ -425,17 +349,89 @@ function renderLayoffTimeline() {
   `).join("");
 }
 
-function renderHiringShift() {
-  const container = document.getElementById("hiringShift");
+function renderCompanyCards() {
+  const container = document.getElementById("companyCards");
   if (!container) return;
 
-  const shifts = buildHiringShiftData();
-  container.innerHTML = shifts.map((item) => `
-    <div class="shift-item">
-      <strong>${escapeHtml(item.title)}</strong>
+  const cards = buildCompanyCards();
+  container.innerHTML = cards.map((item) => `
+    <div class="company-card">
+      <div class="company-top">
+        <div class="company-name">${escapeHtml(item.company)}</div>
+        <span class="company-tag ${riskClass(item.riskScore)}">${escapeHtml(item.riskLabel)}</span>
+      </div>
       <div class="feed-summary">${escapeHtml(item.summary)}</div>
+      <div class="company-metrics">
+        <div class="metric-box">
+          <div class="metric-label">Risk Score</div>
+          <div class="metric-value">${item.riskScore}</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Hiring Trend</div>
+          <div class="metric-value">${escapeHtml(item.hiringTrend)}</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Signal Type</div>
+          <div class="metric-value">${escapeHtml(item.signalType)}</div>
+        </div>
+      </div>
     </div>
   `).join("");
+}
+
+function renderWatchlist() {
+  const container = document.getElementById("watchlistGrid");
+  if (!container) return;
+
+  if (!state.watchlist.length) {
+    container.innerHTML = `<div class="empty-state">No watchlist data available.</div>`;
+    return;
+  }
+
+  container.innerHTML = state.watchlist.slice(0, 8).map((item) => `
+    <div class="watch-item">
+      <div class="watch-symbol">${escapeHtml(item.symbol)}</div>
+      <div class="watch-price">${formatMoney(item.price)}</div>
+      <div class="watch-change ${classForChange(item.changePercent)}">${formatPercent(item.changePercent)}</div>
+    </div>
+  `).join("");
+}
+
+function renderMovers() {
+  const container = document.getElementById("marketMovers");
+  if (!container) return;
+
+  if (!state.movers.length) {
+    container.innerHTML = `<div class="empty-state">No movers data available.</div>`;
+    return;
+  }
+
+  container.innerHTML = state.movers.slice(0, 8).map((item) => `
+    <div class="mover-row">
+      <div>
+        <strong>${escapeHtml(item.symbol)}</strong>
+        <div class="row-meta">${escapeHtml(item.name || "Market mover")}</div>
+      </div>
+      <span class="mover-badge ${classForChange(item.changePercent)}">${formatPercent(item.changePercent)}</span>
+    </div>
+  `).join("");
+}
+
+function renderImpactEngine() {
+  const container = document.getElementById("impactEngine");
+  if (!container) return;
+
+  const chains = buildImpactChains();
+  container.innerHTML = chains.map((item) => `
+    <div class="impact-item">
+      <div class="impact-chain">${escapeHtml(item.chain)}</div>
+      <div class="impact-note">${escapeHtml(item.note)}</div>
+    </div>
+  `).join("");
+}
+
+function renderMarketNews() {
+  renderFeed("marketNews", state.news);
 }
 
 function renderAISignalsBoard() {
@@ -462,6 +458,10 @@ function renderChipWarTracker() {
       <div class="feed-summary">${escapeHtml(item.summary)}</div>
     </div>
   `).join("");
+}
+
+function renderAIFeed() {
+  renderFeed("aiFeed", state.ai);
 }
 
 function renderRegionalRiskBoard() {
@@ -493,20 +493,57 @@ function renderConflictImpact() {
   `).join("");
 }
 
-function buildCombinedSignals() {
-  const derivedMarketSignals = state.news.slice(0, 3).map((item, idx) => ({
-    ...item,
-    id: `market-news-${idx}`,
-    category: "market",
-    score: scoreArticle(item, "market"),
-    impactPoints: buildImpactPoints(item),
-    watchPoints: buildWatchPoints(item),
-    confidence: deriveConfidence(scoreArticle(item, "market"))
-  }));
+function renderRiskFeed() {
+  const source = state.news
+    .filter(containsRiskKeywords)
+    .concat(state.ai.filter(containsRiskKeywords))
+    .slice(0, 8);
 
-  const derivedJobSignals = state.jobs.slice(0, 3).map((item, idx) => ({
+  renderFeed("riskFeed", source.length ? source : fallbackRiskFeed());
+}
+
+function renderJobsFeed() {
+  renderFeed("jobsFeed", state.jobs);
+}
+
+function renderDailyBrief() {
+  const container = document.getElementById("dailyBrief");
+  if (!container) return;
+
+  const brief = buildDailyBrief();
+  container.innerHTML = brief.map((item) => `
+    <div class="brief-item">
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="feed-summary">${escapeHtml(item.summary)}</div>
+    </div>
+  `).join("");
+}
+
+function renderFeed(targetId, items) {
+  const container = document.getElementById(targetId);
+  if (!container) return;
+
+  if (!items || !items.length) {
+    container.innerHTML = `<div class="empty-state">No feed items available.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.slice(0, 8).map((item) => `
+    <article class="feed-item">
+      <h3 class="feed-title">${escapeHtml(item.title)}</h3>
+      <div class="feed-summary">${escapeHtml(item.summary || "No summary available.")}</div>
+      <div class="feed-meta">
+        <span>${formatDate(item.publishedAt || item.date)}</span>
+        <a class="why-link" href="${item.url || "#"}" target="_blank" rel="noopener noreferrer">Open source</a>
+      </div>
+    </article>
+  `).join("");
+}
+
+function buildCombinedSignals() {
+  const derivedJobs = state.jobs.slice(0, 4).map((item, idx) => ({
     ...item,
-    id: `jobs-news-${idx}`,
+    id: `jobs-${idx}`,
     category: "jobs",
     score: scoreArticle(item, "jobs"),
     impactPoints: buildImpactPoints(item),
@@ -514,9 +551,19 @@ function buildCombinedSignals() {
     confidence: deriveConfidence(scoreArticle(item, "jobs"))
   }));
 
-  const derivedAISignals = state.ai.slice(0, 3).map((item, idx) => ({
+  const derivedMarkets = state.news.slice(0, 4).map((item, idx) => ({
     ...item,
-    id: `ai-news-${idx}`,
+    id: `market-${idx}`,
+    category: "market",
+    score: scoreArticle(item, "market"),
+    impactPoints: buildImpactPoints(item),
+    watchPoints: buildWatchPoints(item),
+    confidence: deriveConfidence(scoreArticle(item, "market"))
+  }));
+
+  const derivedAI = state.ai.slice(0, 4).map((item, idx) => ({
+    ...item,
+    id: `ai-${idx}`,
     category: "ai",
     score: scoreArticle(item, "ai"),
     impactPoints: buildImpactPoints(item),
@@ -524,12 +571,12 @@ function buildCombinedSignals() {
     confidence: deriveConfidence(scoreArticle(item, "ai"))
   }));
 
-  const riskSignals = [...state.news, ...state.ai]
-    .filter((item) => containsRiskKeywords(item))
-    .slice(0, 3)
+  const derivedRisk = [...state.news, ...state.ai]
+    .filter(containsRiskKeywords)
+    .slice(0, 4)
     .map((item, idx) => ({
       ...item,
-      id: `risk-news-${idx}`,
+      id: `risk-${idx}`,
       category: "risk",
       score: scoreArticle(item, "risk"),
       impactPoints: buildImpactPoints(item),
@@ -537,9 +584,112 @@ function buildCombinedSignals() {
       confidence: deriveConfidence(scoreArticle(item, "risk"))
     }));
 
-  return [...state.signals, ...derivedJobSignals, ...derivedAISignals, ...derivedMarketSignals, ...riskSignals]
+  return [...state.signals, ...derivedJobs, ...derivedMarkets, ...derivedAI, ...derivedRisk]
     .filter(uniqueBy("title"))
     .sort((a, b) => (b.score || 0) - (a.score || 0));
+}
+
+function buildCompanyRiskScores() {
+  const companies = ["Intel", "Tesla", "Crypto.com", "Amazon", "Meta", "Google", "Microsoft", "AMD", "NVIDIA", "TSMC"];
+
+  return companies.map((company) => {
+    const related = [...state.jobs, ...state.news, ...state.ai]
+      .filter((item) => includesWord(item.title, company) || includesWord(item.summary, company))
+      .map((item) => `${item.title} ${item.summary}`)
+      .join(" ")
+      .toLowerCase();
+
+    let score = 34;
+    let status = "Stable / limited negative pressure";
+
+    if (related.includes("layoff") || related.includes("job cut")) {
+      score += 28;
+      status = "Layoff pressure detected";
+    }
+    if (related.includes("restructuring") || related.includes("freeze")) {
+      score += 15;
+      status = "Restructuring / hiring caution";
+    }
+    if (related.includes("ai") || related.includes("demand") || related.includes("growth")) {
+      score -= 10;
+      status = status === "Layoff pressure detected" ? status : "Growth offsets risk";
+    }
+    if (company === "NVIDIA" || company === "AMD" || company === "TSMC") {
+      score -= 8;
+      if (!related.includes("layoff")) status = "AI / chip demand support";
+    }
+    if (company === "Intel" || company === "Tesla" || company === "Crypto.com") {
+      score += 12;
+    }
+
+    score = Math.max(18, Math.min(92, score));
+    return { company, score, status };
+  }).sort((a, b) => b.score - a.score).slice(0, 8);
+}
+
+function buildCompanyCards() {
+  const base = buildCompanyRiskScores();
+  return base.map((item) => {
+    const riskLabel = item.score >= 75 ? "High Risk" : item.score >= 50 ? "Watch" : "Healthier";
+    const hiringTrend = item.score >= 75 ? "Weak" : item.score >= 50 ? "Mixed" : "Better";
+    const signalType = item.score >= 75 ? "Layoffs / pressure" : item.score >= 50 ? "Restructuring" : "AI / stability";
+    const summary =
+      item.score >= 75
+        ? `${item.company} looks more exposed to layoffs, cost pressure, or hiring caution.`
+        : item.score >= 50
+          ? `${item.company} shows mixed signals and deserves monitoring.`
+          : `${item.company} looks better positioned relative to pressured peers.`;
+
+    return {
+      company: item.company,
+      riskScore: item.score,
+      riskLabel,
+      hiringTrend,
+      signalType,
+      summary
+    };
+  });
+}
+
+function buildSectorHeatmapData() {
+  return [
+    { sector: "AI Infrastructure", note: "GPU and cloud buildout remain supportive.", label: "Hiring", className: "level-positive" },
+    { sector: "Semiconductors", note: "Strong demand but policy and supply-chain sensitivity remain.", label: "Mixed", className: "level-mixed" },
+    { sector: "Fintech", note: "Efficiency focus and restructuring keep pressure elevated.", label: "Layoffs Risk", className: "level-high" },
+    { sector: "Cloud Platforms", note: "Selective hiring continues around AI workloads.", label: "Selective Growth", className: "level-low" },
+    { sector: "EV / Mobility", note: "Margin pressure and regulatory stories increase volatility.", label: "Watch Closely", className: "level-medium" },
+    { sector: "Consumer Tech", note: "Mixed signals with selective cost optimization.", label: "Mixed", className: "level-mixed" }
+  ];
+}
+
+function buildLayoffTimeline() {
+  const items = state.jobs.length ? state.jobs : fallbackJobs();
+  return items.slice(0, 6).map((item) => ({
+    date: formatDate(item.publishedAt || item.date),
+    title: item.title,
+    summary: item.summary || "No summary available."
+  }));
+}
+
+function buildHiringShiftData() {
+  return [
+    {
+      title: "Semiconductor layoffs → talent may shift to NVIDIA, AMD, TSMC ecosystem",
+      summary: "Technical workers often move toward firms with stronger AI or infrastructure demand."
+    },
+    {
+      title: "Fintech cuts → talent may shift to cloud, data, and enterprise software",
+      summary: "Platform and backend skills remain transferable across enterprise software companies."
+    },
+    {
+      title: "Automotive pressure → talent may shift to embedded systems and validation",
+      summary: "Hardware and validation engineers can move into AI, robotics, or semiconductor roles."
+    },
+    {
+      title: "Big Tech restructuring → talent may shift to startups and AI labs",
+      summary: "Smaller companies can benefit from a deeper and stronger talent pool."
+    }
+  ];
 }
 
 function buildImpactChains() {
@@ -555,21 +705,18 @@ function buildImpactChains() {
         note: "Conflict headlines often raise commodity sensitivity and transport risk."
       });
     }
-
     if (text.includes("tariff") || text.includes("china") || text.includes("restriction")) {
       chains.push({
-        chain: "Policy pressure → supply chain uncertainty ↑ → semis multiple pressure",
+        chain: "Policy pressure → supply chain uncertainty ↑ → semis pressure",
         note: "Trade restrictions can affect chip manufacturing, exports, and pricing."
       });
     }
-
     if (text.includes("nvidia") || text.includes("gpu") || text.includes("ai")) {
       chains.push({
         chain: "AI demand ↑ → GPU demand ↑ → cloud capex ↑",
-        note: "AI buildout headlines tend to reinforce compute and infrastructure spending."
+        note: "AI buildout headlines reinforce compute and infrastructure spending."
       });
     }
-
     if (text.includes("layoff") || text.includes("job cut") || text.includes("restructuring")) {
       chains.push({
         chain: "Layoffs ↑ → sentiment weakens → hiring shifts to stronger operators",
@@ -596,210 +743,63 @@ function buildImpactChains() {
   return dedupeByValue(chains, "chain").slice(0, 6).concat(dedupeByValue(fallback, "chain")).slice(0, 6);
 }
 
-function buildCompanyRiskScores() {
-  const companies = [
-    "Google", "Microsoft", "Meta", "Amazon", "Intel", "AMD", "NVIDIA", "Tesla", "PayPal", "Crypto.com"
-  ];
-
-  return companies.map((company) => {
-    const relatedText = [...state.jobs, ...state.news, ...state.ai]
-      .filter((item) => includesWord(item.title, company) || includesWord(item.summary, company))
-      .map((item) => `${item.title} ${item.summary}`)
-      .join(" ")
-      .toLowerCase();
-
-    let score = 34;
-    let status = "Stable / limited negative pressure";
-
-    if (relatedText.includes("layoff") || relatedText.includes("job cut")) {
-      score += 28;
-      status = "Layoff pressure detected";
-    }
-    if (relatedText.includes("restructuring") || relatedText.includes("freeze")) {
-      score += 15;
-      status = "Restructuring / hiring caution";
-    }
-    if (relatedText.includes("ai") || relatedText.includes("demand") || relatedText.includes("growth")) {
-      score -= 10;
-      status = status === "Layoff pressure detected" ? status : "Growth offsets risk";
-    }
-    if (company === "NVIDIA" || company === "AMD") {
-      score -= 8;
-      if (!relatedText.includes("layoff")) status = "AI / semiconductor strength";
-    }
-    if (company === "Intel" || company === "Tesla" || company === "Crypto.com") {
-      score += 12;
-    }
-
-    score = Math.max(18, Math.min(92, score));
-
-    return { company, score, status };
-  }).sort((a, b) => b.score - a.score).slice(0, 8);
-}
-
-function buildSectorHeatmapData() {
-  return [
-    {
-      sector: "AI Infrastructure",
-      note: "GPU and cloud buildout remain supportive.",
-      label: "Hiring",
-      className: "level-positive"
-    },
-    {
-      sector: "Semiconductors",
-      note: "Strong demand but policy and supply-chain sensitivity remain.",
-      label: "Mixed",
-      className: "level-mixed"
-    },
-    {
-      sector: "Fintech",
-      note: "Efficiency focus and restructuring keep pressure elevated.",
-      label: "Layoffs Risk",
-      className: "level-high"
-    },
-    {
-      sector: "Cloud Platforms",
-      note: "Selective hiring continues around AI workloads.",
-      label: "Selective Growth",
-      className: "level-low"
-    },
-    {
-      sector: "EV / Mobility",
-      note: "Margin pressure and regulatory stories increase volatility.",
-      label: "Watch Closely",
-      className: "level-medium"
-    },
-    {
-      sector: "Consumer Tech",
-      note: "Mixed signals with selective cost optimization.",
-      label: "Mixed",
-      className: "level-mixed"
-    }
-  ];
-}
-
-function buildLayoffTimeline() {
-  const items = state.jobs.length ? state.jobs : fallbackJobs();
-
-  return items.slice(0, 6).map((item) => ({
-    date: formatDate(item.publishedAt || item.date),
-    title: item.title,
-    summary: item.summary || "No summary available."
-  }));
-}
-
-function buildHiringShiftData() {
-  return [
-    {
-      title: "Semiconductor layoffs → talent may shift to NVIDIA, AMD, TSMC ecosystem",
-      summary: "Highly specialized engineers often move toward firms with stronger AI or infrastructure demand."
-    },
-    {
-      title: "Fintech cuts → talent may shift to cloud, data, and enterprise software",
-      summary: "Workers displaced from fintech often fit platform, compliance, or backend product teams."
-    },
-    {
-      title: "Automotive pressure → talent may shift to autonomy, validation, and embedded systems",
-      summary: "Hardware, reliability, and systems talent can move into AI/robotics and semiconductor validation roles."
-    },
-    {
-      title: "Big Tech restructuring → talent may shift into startups and AI labs",
-      summary: "Employer brand remains strong, but smaller firms may benefit from a deeper talent pool."
-    }
-  ];
-}
-
 function buildAISignalSummary() {
   const aiCount = state.ai.length || 6;
   return [
-    {
-      title: "AI Buildout Momentum",
-      note: `${aiCount} recent AI-related items tracked across infrastructure, launches, and platform competition.`
-    },
-    {
-      title: "GPU Demand Narrative",
-      note: "Cloud compute and model training headlines continue to support demand for accelerators."
-    },
-    {
-      title: "Capex Expansion Risk",
-      note: "AI growth remains positive, but heavy infrastructure spending can pressure margins."
-    },
-    {
-      title: "Cloud Competition",
-      note: "Microsoft, Google, Meta, and others are competing on AI deployment, distribution, and inference scale."
-    }
+    { title: "AI Buildout Momentum", note: `${aiCount} recent AI items tracked across infrastructure, launches, and platform competition.` },
+    { title: "GPU Demand Narrative", note: "Cloud compute and model training continue to support accelerator demand." },
+    { title: "Capex Expansion Risk", note: "AI growth is strong, but heavy infrastructure spending can still pressure margins." },
+    { title: "Cloud Competition", note: "Microsoft, Google, Meta, and others are competing on AI deployment and scale." }
   ];
 }
 
 function buildChipWarItems() {
   return [
-    {
-      title: "US-China restrictions remain a key semiconductor overhang",
-      summary: "Export limits and policy changes can affect chip supply chains, customer mix, and sentiment."
-    },
-    {
-      title: "Taiwan / foundry concentration stays strategically important",
-      summary: "Any disruption to advanced manufacturing capacity could impact semiconductors broadly."
-    },
-    {
-      title: "AI demand offsets some macro weakness",
-      summary: "Accelerator demand can support parts of the chip sector even when broader electronics demand is mixed."
-    },
-    {
-      title: "Semis remain tied to global politics",
-      summary: "Policy, trade, and regional security stories can move the entire chip narrative quickly."
-    }
+    { title: "US-China restrictions remain a key semiconductor overhang", summary: "Export limits and policy changes can affect chip supply chains and sentiment." },
+    { title: "Taiwan concentration stays strategically important", summary: "Any disruption to advanced manufacturing capacity could impact semiconductors broadly." },
+    { title: "AI demand offsets some macro weakness", summary: "Accelerator demand can support parts of the chip sector even when electronics demand is mixed." },
+    { title: "Semis remain tied to global politics", summary: "Policy, trade, and regional security stories can move the chip narrative quickly." }
   ];
 }
 
 function buildRegionalRiskData() {
   return [
-    {
-      region: "Middle East",
-      note: "Conflict escalation can impact oil, shipping, and global sentiment.",
-      level: "High Risk",
-      className: "level-high"
-    },
-    {
-      region: "East Asia",
-      note: "Semiconductor concentration and geopolitical competition keep strategic risk elevated.",
-      level: "Medium Risk",
-      className: "level-medium"
-    },
-    {
-      region: "Europe",
-      note: "Moderate risk tied to energy, war spillovers, and industrial weakness.",
-      level: "Medium Risk",
-      className: "level-medium"
-    },
-    {
-      region: "North America",
-      note: "Operationally stable, but exposed to policy shifts and market repricing.",
-      level: "Lower Risk",
-      className: "level-low"
-    }
+    { region: "Middle East", note: "Conflict escalation can impact oil, shipping, and global sentiment.", level: "High Risk", className: "level-high" },
+    { region: "East Asia", note: "Semiconductor concentration and geopolitical competition keep strategic risk elevated.", level: "Medium Risk", className: "level-medium" },
+    { region: "Europe", note: "Moderate risk tied to energy, war spillovers, and industrial weakness.", level: "Medium Risk", className: "level-medium" },
+    { region: "North America", note: "Operationally stable, but exposed to policy shifts and market repricing.", level: "Lower Risk", className: "level-low" }
   ];
 }
 
 function buildConflictImpactData() {
   return [
-    {
-      chain: "Middle East conflict ↑ → oil ↑ → airlines / transport pressure",
-      note: "Fuel-sensitive sectors often react quickly to oil shock headlines."
-    },
-    {
-      chain: "Ukraine pressure ↑ → commodities volatility ↑ → inflation watch",
-      note: "Food, energy, and transport channels can all transmit risk."
-    },
-    {
-      chain: "China restrictions ↑ → semiconductor uncertainty ↑ → hardware repricing",
-      note: "Trade and export shifts can affect semis and hyperscaler narratives."
-    },
-    {
-      chain: "Regional instability ↑ → safe-haven flows ↑ → risk appetite weakens",
-      note: "Macro uncertainty can compress speculative positioning across growth assets."
-    }
+    { chain: "Middle East conflict ↑ → oil ↑ → airlines / transport pressure", note: "Fuel-sensitive sectors often react quickly to oil shock headlines." },
+    { chain: "Ukraine pressure ↑ → commodities volatility ↑ → inflation watch", note: "Food, energy, and transport channels can all transmit risk." },
+    { chain: "China restrictions ↑ → semiconductor uncertainty ↑ → hardware repricing", note: "Trade and export shifts can affect semis and hyperscaler narratives." },
+    { chain: "Regional instability ↑ → safe-haven flows ↑ → risk appetite weakens", note: "Macro uncertainty can compress speculative positioning across growth assets." }
   ];
+}
+
+function buildDailyBrief() {
+  const companies = buildCompanyRiskScores();
+  const highest = companies[0];
+  const healthiest = companies[companies.length - 1];
+  const signals = buildCombinedSignals().slice(0, 3);
+
+  return [
+    {
+      title: `Highest pressure today: ${highest.company}`,
+      summary: `${highest.company} currently shows the strongest negative pressure in the board with a risk score of ${highest.score}.`
+    },
+    {
+      title: `Healthier relative name: ${healthiest.company}`,
+      summary: `${healthiest.company} looks better positioned versus peers in the current feed.`
+    },
+    ...signals.map((item) => ({
+      title: item.title,
+      summary: `${formatCategory(item.category)} • Score ${item.score}`
+    }))
+  ].slice(0, 5);
 }
 
 function buildImpactPoints(signal) {
@@ -830,8 +830,6 @@ function buildImpactPoints(signal) {
 }
 
 function buildWatchPoints(signal) {
-  const category = signal.category || "market";
-
   const defaults = {
     jobs: [
       "Watch for follow-up layoffs or hiring freezes.",
@@ -851,7 +849,7 @@ function buildWatchPoints(signal) {
     ]
   };
 
-  return defaults[category] || defaults.market;
+  return defaults[signal.category || "market"] || defaults.market;
 }
 
 function deriveConfidence(score) {
@@ -916,101 +914,6 @@ function normalizeWatchItem(item) {
     price: parseFloat(item.price ?? item.current ?? item.last ?? 0),
     changePercent: parseFloat(item.changePercent ?? item.percent ?? item.change ?? 0)
   };
-}
-
-function initMap() {
-  const mapEl = document.getElementById("map");
-  if (!mapEl || typeof L === "undefined") return;
-
-  state.map = L.map("map", {
-    zoomControl: true,
-    worldCopyJump: true
-  }).setView([22, 10], 2);
-
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap &copy; CARTO"
-  }).addTo(state.map);
-
-  state.markersLayer = L.layerGroup().addTo(state.map);
-}
-
-function initLayerButtons() {
-  const buttons = document.querySelectorAll(".layer-btn");
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => {
-      buttons.forEach((b) => b.classList.remove("active"));
-      button.classList.add("active");
-      renderMapMarkersForLayer(button.dataset.layer);
-    });
-  });
-}
-
-function renderMapMarkersForLayer(layer) {
-  if (!state.map || !state.markersLayer) return;
-
-  state.markersLayer.clearLayers();
-
-  const points = getMapPoints(layer);
-  points.forEach((point) => {
-    const marker = L.circleMarker([point.lat, point.lng], {
-      radius: point.radius || 6,
-      weight: 1,
-      color: point.color,
-      fillColor: point.color,
-      fillOpacity: 0.65
-    });
-
-    marker.bindPopup(`
-      <strong>${escapeHtml(point.title)}</strong><br/>
-      <span>${escapeHtml(point.note)}</span>
-    `);
-
-    marker.addTo(state.markersLayer);
-  });
-}
-
-function getMapPoints(layer) {
-  const colorMap = {
-    earthquakes: "#4d98ff",
-    markets: "#2ee6c9",
-    jobs: "#ff5e7e",
-    ai: "#ffbf47",
-    risk: "#b983ff"
-  };
-
-  const base = colorMap[layer] || "#4d98ff";
-
-  const pointsByLayer = {
-    earthquakes: [
-      { lat: 61.2, lng: -149.9, title: "Alaska Event Cluster", note: "Seismic activity zone", color: base },
-      { lat: 35.6, lng: 140.1, title: "Japan Activity", note: "Pacific ring pressure", color: base },
-      { lat: 19.4, lng: -155.3, title: "Hawaii Seismic", note: "Volcanic system watch", color: base }
-    ],
-    markets: [
-      { lat: 40.7, lng: -74.0, title: "New York Markets", note: "Equity and macro reaction", color: base },
-      { lat: 51.5, lng: -0.1, title: "London Markets", note: "Global capital flows", color: base },
-      { lat: 35.7, lng: 139.7, title: "Tokyo Markets", note: "Asia market pricing", color: base }
-    ],
-    jobs: [
-      { lat: 37.4, lng: -122.1, title: "Silicon Valley", note: "Big Tech workforce shifts", color: base },
-      { lat: 47.6, lng: -122.3, title: "Seattle", note: "Cloud / retail tech hiring", color: base },
-      { lat: 30.2, lng: -97.7, title: "Austin", note: "Semiconductor and AI jobs", color: base }
-    ],
-    ai: [
-      { lat: 37.7, lng: -122.4, title: "AI Startup Cluster", note: "Model and infra buildout", color: base },
-      { lat: 47.6, lng: -122.3, title: "Cloud AI Expansion", note: "Hyperscaler activity", color: base },
-      { lat: 25.0, lng: 121.5, title: "Foundry / Hardware Link", note: "Semiconductor dependency", color: base }
-    ],
-    risk: [
-      { lat: 32.0, lng: 53.0, title: "Iran Region", note: "Energy and geopolitical sensitivity", color: base },
-      { lat: 31.5, lng: 34.8, title: "Israel Region", note: "Conflict and regional escalation risk", color: base },
-      { lat: 49.0, lng: 31.0, title: "Ukraine Region", note: "War and commodity impact", color: base }
-    ]
-  };
-
-  return pointsByLayer[layer] || pointsByLayer.earthquakes;
 }
 
 function fallbackSignals() {
@@ -1196,6 +1099,11 @@ function dedupeByValue(items, key) {
     seen.add(item[key]);
     return true;
   });
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 function escapeHtml(str) {
