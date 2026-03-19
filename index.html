@@ -19,8 +19,15 @@
     <header class="topbar">
       <div class="brand-block">
         <div class="brand">YOUOOO</div>
-        <div class="subtitle">World • Markets • Jobs • AI Alerts</div>
+        <div class="subtitle">World → Markets → Jobs → AI Intelligence</div>
       </div>
+
+      <nav class="top-nav">
+        <a href="#topSignalsCard">Signals</a>
+        <a href="#marketsTab">Markets</a>
+        <a href="#jobsTab">Jobs</a>
+        <a href="#aiTab">AI</a>
+      </nav>
 
       <div class="topbar-right">
         <div class="status-pill online">STATUS: ONLINE</div>
@@ -41,7 +48,7 @@
 
           <div class="layer-grid">
             <button class="layer-btn active" data-layer="earthquakes">Earthquakes</button>
-            <button class="layer-btn" data-layer="markets">Markets</button>
+            <button class="layer-btn" data-layer="markets">Market Impact</button>
             <button class="layer-btn" data-layer="jobs">Jobs</button>
             <button class="layer-btn" data-layer="ai">AI Alerts</button>
           </div>
@@ -49,11 +56,11 @@
           <div class="tag-row">
             <span class="tag">Ukraine</span>
             <span class="tag">Middle East</span>
-            <span class="tag">Africa</span>
+            <span class="tag">Semis</span>
           </div>
 
           <p class="panel-note">
-            Drag panels • Toggle layers • Track world signals and market reaction.
+            Visualize world events, market reaction, and company signals in one place.
           </p>
         </div>
 
@@ -69,17 +76,33 @@
       </section>
 
       <aside class="side-panel">
+        <section id="topSignalsCard" class="card hero-card">
+          <div class="card-header-row">
+            <div>
+              <h2>Top Signals Now</h2>
+              <p class="card-subtitle">
+                Ranked events and moves across markets, jobs, and AI.
+              </p>
+            </div>
+            <div class="beta-badge">LIVE BETA</div>
+          </div>
+
+          <div id="topSignalsList" class="top-signals-list">
+            <div class="empty-state">Loading top signals...</div>
+          </div>
+        </section>
+
         <nav class="tabs">
           <button class="tab-btn active" data-tab="marketsTab">Markets</button>
           <button class="tab-btn" data-tab="jobsTab">Jobs</button>
-          <button class="tab-btn" data-tab="aiTab">AI Alerts</button>
+          <button class="tab-btn" data-tab="aiTab">AI</button>
         </nav>
 
         <section id="marketsTab" class="tab-content active">
           <div class="card">
-            <h2>Stock Sentiment Radar</h2>
+            <h2>Market Snapshot</h2>
             <p class="card-subtitle">
-              Track macro events, price action, movers, and quick watchlist signals.
+              Track price action, movers, and market-moving headlines.
             </p>
 
             <h3>Top Watchlist</h3>
@@ -94,19 +117,21 @@
 
             <h3>World + Market Feed</h3>
             <div id="marketNews" class="news-feed">
-              <div class="empty-state">Loading news...</div>
+              <div class="empty-state">Loading market news...</div>
             </div>
           </div>
         </section>
 
         <section id="jobsTab" class="tab-content">
           <div class="card">
-            <h2>Layoff Radar</h2>
+            <div class="section-headline-row">
+              <h2>Layoff Radar</h2>
+              <span class="trend-pill danger">Trend: Negative</span>
+            </div>
             <p class="card-subtitle">
-              Monitor hiring slowdowns, layoffs, and workforce signals from major companies.
+              Hiring slowdowns, layoffs, restructuring, and workforce signals.
             </p>
 
-            <h3>Tracked Companies</h3>
             <div class="chips">
               <span class="chip">Google</span>
               <span class="chip">Microsoft</span>
@@ -116,7 +141,7 @@
               <span class="chip">Intel</span>
             </div>
 
-            <h3>Jobs / Layoff Intelligence</h3>
+            <h3>Jobs Intelligence</h3>
             <div id="jobsFeed" class="news-feed">
               <div class="empty-state">Loading jobs intelligence...</div>
             </div>
@@ -125,9 +150,12 @@
 
         <section id="aiTab" class="tab-content">
           <div class="card">
-            <h2>AI Alerts</h2>
+            <div class="section-headline-row">
+              <h2>AI Intelligence</h2>
+              <span class="trend-pill success">Trend: Strong Growth</span>
+            </div>
             <p class="card-subtitle">
-              Follow AI launches, chip demand, cloud moves, regulation, and major company updates.
+              AI launches, semiconductor demand, cloud competition, and chip signals.
             </p>
 
             <div class="chips">
@@ -139,14 +167,55 @@
               <span class="chip">Meta</span>
             </div>
 
-            <h3>AI Intelligence Layer</h3>
+            <h3>AI Signals</h3>
             <div id="aiFeed" class="news-feed">
               <div class="empty-state">Loading AI alerts...</div>
             </div>
           </div>
         </section>
+
+        <footer class="site-footer">
+          <span>Built by Ahmed Aldulaimi</span>
+          <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </footer>
       </aside>
     </main>
+  </div>
+
+  <div id="signalModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="closeModalBtn" aria-label="Close">×</button>
+
+      <div class="modal-kicker">WHY IT MATTERS</div>
+      <h2 id="modalTitle">Signal Details</h2>
+
+      <div class="modal-meta" id="modalMeta">Loading...</div>
+
+      <div class="modal-section">
+        <h3>What happened</h3>
+        <p id="modalSummary">—</p>
+      </div>
+
+      <div class="modal-section">
+        <h3>Impact</h3>
+        <ul id="modalImpactList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Watch</h3>
+        <ul id="modalWatchList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Confidence</h3>
+        <div id="modalConfidence" class="confidence-badge">Medium</div>
+      </div>
+
+      <div class="modal-actions">
+        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-link">Open source</a>
+      </div>
+    </div>
   </div>
 
   <script

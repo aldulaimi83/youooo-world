@@ -4,10 +4,12 @@ let map;
 let earthquakeLayer;
 let marketMarkersLayer;
 let activeLayer = "earthquakes";
+let cachedSignals = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupLayerButtons();
+  setupModal();
   initMap();
   await loadAllData();
   setInterval(loadAllData, 5 * 60 * 1000);
@@ -40,6 +42,20 @@ function setupLayerButtons() {
       activeLayer = btn.dataset.layer;
       toggleLayers();
     });
+  });
+}
+
+function setupModal() {
+  const closeBtn = document.getElementById("closeModalBtn");
+  const backdrop = document.getElementById("modalBackdrop");
+
+  closeBtn.addEventListener("click", closeSignalModal);
+  backdrop.addEventListener("click", closeSignalModal);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSignalModal();
+    }
   });
 }
 
@@ -82,7 +98,8 @@ async function loadAllData() {
     loadMarketNews(),
     loadJobsFeed(),
     loadAIFeed(),
-    loadSignalAlerts()
+    loadSignalAlerts(),
+    loadTopSignals()
   ]);
 }
 
@@ -261,6 +278,200 @@ async function loadSignalAlerts() {
   }
 }
 
+async function loadTopSignals() {
+  const container = document.getElementById("topSignalsList");
+  container.innerHTML = `<div class="empty-state">Loading top signals...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/signals"));
+    const items = (payload.data || []).slice(0, 8);
+    cachedSignals = items;
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No top signals available.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map((item, index) => {
+      const score = computeSignalScore(item);
+      const typeLabel = item.type === "market"
+        ? "Market"
+        : item.type === "jobs"
+        ? "Jobs"
+        : "AI";
+
+      const title = escapeHtml(item.title || "Untitled signal");
+      const summary = escapeHtml((item.summary || "").slice(0, 140));
+      const time = item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown time";
+
+      return `
+        <div class="top-signal-item" data-index="${index}">
+          <div class="signal-type ${escapeHtml(item.type || "market")}">${typeLabel}</div>
+
+          <div class="top-signal-head">
+            <div>
+              <div class="top-signal-title">${title}</div>
+              <div class="item-meta">${summary}</div>
+            </div>
+            <div class="top-signal-score">Score ${score}</div>
+          </div>
+
+          <div class="signal-footer">
+            <div class="news-source">${time}</div>
+            <a href="#" class="why-link" data-index="${index}">Why it matters</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    attachTopSignalEvents();
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div class="empty-state">Failed to load top signals.</div>`;
+  }
+}
+
+function attachTopSignalEvents() {
+  document.querySelectorAll(".top-signal-item").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      const index = Number(event.currentTarget.dataset.index);
+      openSignalModal(cachedSignals[index]);
+    });
+  });
+
+  document.querySelectorAll(".why-link").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = Number(event.currentTarget.dataset.index);
+      openSignalModal(cachedSignals[index]);
+    });
+  });
+}
+
+function openSignalModal(signal) {
+  if (!signal) return;
+
+  const modal = document.getElementById("signalModal");
+  const title = document.getElementById("modalTitle");
+  const meta = document.getElementById("modalMeta");
+  const summary = document.getElementById("modalSummary");
+  const impactList = document.getElementById("modalImpactList");
+  const watchList = document.getElementById("modalWatchList");
+  const confidence = document.getElementById("modalConfidence");
+  const sourceLink = document.getElementById("modalSourceLink");
+
+  const score = computeSignalScore(signal);
+  const confidenceLabel = score >= 85 ? "High" : score >= 70 ? "Medium" : "Watch";
+  const insights = buildWhyItMatters(signal);
+
+  title.textContent = signal.title || "Signal Details";
+  meta.textContent = `${formatSignalType(signal.type)} • Score ${score}`;
+  summary.textContent = signal.summary || "No summary available.";
+
+  impactList.innerHTML = insights.impact.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  watchList.innerHTML = insights.watch.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  confidence.textContent = confidenceLabel;
+
+  if (signal.url) {
+    sourceLink.href = signal.url;
+    sourceLink.style.display = "inline-flex";
+  } else {
+    sourceLink.href = "#";
+    sourceLink.style.display = "none";
+  }
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeSignalModal() {
+  const modal = document.getElementById("signalModal");
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function buildWhyItMatters(signal) {
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+
+  if (signal.type === "market") {
+    return {
+      impact: [
+        "Large market moves often signal sentiment changes or reaction to breaking news.",
+        "Semiconductors, tech indexes, and momentum names may react together.",
+        "Watch for follow-through into the next session."
+      ],
+      watch: pickWatchList(text, ["AMD", "NVDA", "QQQ", "SPY", "TSLA", "AAPL"])
+    };
+  }
+
+  if (signal.type === "jobs") {
+    return {
+      impact: [
+        "Workforce cuts can signal slowing growth, cost pressure, or margin defense.",
+        "Layoff signals often affect tech sentiment and hiring confidence.",
+        "Repeated restructuring headlines can matter more than one headline alone."
+      ],
+      watch: pickWatchList(text, ["AMZN", "GOOGL", "META", "MSFT", "INTC", "AMD"])
+    };
+  }
+
+  return {
+    impact: [
+      "AI headlines can move semiconductors, cloud names, and infrastructure suppliers.",
+      "Model launches and GPU demand usually benefit the broader AI trade.",
+      "Chip, datacenter, and cloud spending often move together."
+    ],
+    watch: pickWatchList(text, ["NVDA", "AMD", "MSFT", "GOOGL", "META", "SMH"])
+  };
+}
+
+function pickWatchList(text, defaults) {
+  const matches = [];
+
+  if (text.includes("nvidia")) matches.push("Watch NVDA for semiconductor momentum.");
+  if (text.includes("amd")) matches.push("Watch AMD for AI/compute spillover.");
+  if (text.includes("microsoft")) matches.push("Watch MSFT for cloud and AI integration.");
+  if (text.includes("google")) matches.push("Watch GOOGL for AI platform response.");
+  if (text.includes("amazon")) matches.push("Watch AMZN for cost control and hiring signals.");
+  if (text.includes("meta")) matches.push("Watch META for AI capex and restructuring signals.");
+  if (text.includes("oil")) matches.push("Watch energy names if geopolitical risk stays elevated.");
+
+  if (!matches.length) {
+    return defaults.slice(0, 3).map((item) => `Watch ${item} for related movement.`);
+  }
+
+  return matches.slice(0, 4);
+}
+
+function computeSignalScore(signal) {
+  let score = 60;
+
+  const title = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+
+  if (signal.type === "market") score += 10;
+  if (signal.type === "jobs") score += 12;
+  if (signal.type === "ai") score += 14;
+
+  const importantWords = [
+    "nvidia", "amd", "openai", "microsoft", "google", "meta",
+    "layoff", "restructuring", "ai", "chip", "demand", "surge"
+  ];
+
+  importantWords.forEach((word) => {
+    if (title.includes(word)) score += 2;
+  });
+
+  const ageHours = signal.timestamp
+    ? Math.max(0, (Date.now() - signal.timestamp) / (1000 * 60 * 60))
+    : 12;
+
+  if (ageHours < 6) score += 8;
+  else if (ageHours < 24) score += 4;
+
+  return Math.min(99, Math.round(score));
+}
+
 async function loadEarthquakes() {
   try {
     const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
@@ -329,29 +540,34 @@ function renderMarketMarkers(quotes) {
     const pos = positions[quote.symbol];
     if (!pos) return;
 
-    const cls =
-      quote.percentChange > 0 ? "positive" :
-      quote.percentChange < 0 ? "negative" : "neutral";
+    const isPositive = Number(quote.percentChange) >= 0;
+    const fillColor = isPositive ? "#6dff98" : "#ff6b7d";
 
     const marker = L.circleMarker(pos, {
       radius: 10,
       weight: 1,
-      opacity: 0.9,
-      fillOpacity: 0.65
+      opacity: 0.95,
+      fillOpacity: 0.75,
+      color: fillColor,
+      fillColor
     });
 
     marker.bindPopup(`
       <strong>${escapeHtml(quote.symbol)}</strong><br>
       Price: ${formatPrice(quote.price)}<br>
-      <span class="${cls}">
-        ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
-      </span>
+      ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
     `);
 
     marker.addTo(marketMarkersLayer);
   });
 
   toggleLayers();
+}
+
+function formatSignalType(type) {
+  if (type === "jobs") return "Jobs";
+  if (type === "ai") return "AI";
+  return "Market";
 }
 
 function formatPrice(value) {
