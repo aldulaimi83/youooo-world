@@ -1,411 +1,438 @@
-const BACKEND_BASE = "https://youooo-world-backend.youooo.workers.dev";
-const FINNHUB_API_KEY = "d6sv32pr01qoqoirkkfgd6sv32pr01qoqoirkkg0";
-const REFRESH_MS = 60000;
 
-const map = new maplibregl.Map({
-  container: "map",
-  style: {
-    version: 8,
-    sources: {
-      carto: {
-        type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-          "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-          "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-          "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-        ],
-        tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
-      }
-    },
-    layers: [
-      {
-        id: "carto-dark",
-        type: "raster",
-        source: "carto"
-      }
-    ]
-  },
-  center: [-20, 25],
-  zoom: 2
+const FINNHUB_API_KEY = "d6sv32pr01qoqoirkkfgd6sv32pr01qoqoirkkg0";
+
+const WATCHLIST = ["SPY", "QQQ", "AMD", "NVDA", "TSLA", "BTCUSD"];
+const MOVERS = ["AMD", "NVDA", "TSLA", "AAPL", "MSFT", "META", "AMZN", "GOOGL"];
+const JOBS_QUERY =
+  "layoffs OR hiring freeze OR job cuts OR workforce OR restructuring Amazon OR Google OR Meta OR Microsoft OR Intel OR AMD";
+const AI_QUERY =
+  "OpenAI OR NVIDIA OR AMD OR Google AI OR Microsoft AI OR Meta AI OR AI chips OR AI regulation";
+
+let map;
+let earthquakeLayer;
+let marketMarkersLayer;
+let activeLayer = "earthquakes";
+
+document.addEventListener("DOMContentLoaded", async () => {
+  setupTabs();
+  setupLayerButtons();
+  initMap();
+  await loadAllData();
+  setInterval(loadAllData, 5 * 60 * 1000);
 });
 
-map.addControl(new maplibregl.NavigationControl(), "bottom-right");
+function setupTabs() {
+  const buttons = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
 
-const earthquakeMarkers = [];
-const aircraftMarkers = [];
-const conflictMarkers = [];
-const wildfireMarkers = [];
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      contents.forEach((c) => c.classList.remove("active"));
 
-function clearMarkers(markerArray) {
-  markerArray.forEach((m) => m.remove());
-  markerArray.length = 0;
-}
-
-function updateStamp() {
-  const value = new Date().toLocaleString();
-  const el = document.getElementById("last-update-box");
-  if (el) el.textContent = `UPDATED: ${value}`;
-}
-
-function setCount(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = String(value);
-}
-
-function makePopup(title, rows) {
-  const htmlRows = rows
-    .map(
-      (r) =>
-        `<div class="popup-row"><span class="popup-label">${r.label}:</span> ${r.value}</div>`
-    )
-    .join("");
-
-  return new maplibregl.Popup({ offset: 12 }).setHTML(`
-    <h3 class="popup-title">${title}</h3>
-    ${htmlRows}
-  `);
-}
-
-function createCustomMarker(className) {
-  const el = document.createElement("div");
-  el.className = className;
-  return el;
-}
-
-function switchView(viewId) {
-  document.querySelectorAll(".app-view").forEach((view) => {
-    view.classList.toggle("active-view", view.id === viewId);
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+    });
   });
+}
 
-  document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === viewId);
+function setupLayerButtons() {
+  const buttons = document.querySelectorAll(".layer-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeLayer = btn.dataset.layer;
+      toggleLayers();
+    });
   });
+}
 
-  document.querySelectorAll(".view-controls").forEach((box) => {
-    box.classList.remove("active-controls");
-  });
+function initMap() {
+  map = L.map("map", {
+    zoomControl: true,
+    worldCopyJump: true
+  }).setView([22, 10], 2.2);
 
-  if (viewId === "world-view") {
-    document.getElementById("world-controls").classList.add("active-controls");
-    document.getElementById("bottom-hint").style.display = "block";
-    setTimeout(() => map.resize(), 100);
-  } else if (viewId === "markets-view") {
-    document.getElementById("markets-controls").classList.add("active-controls");
-    document.getElementById("bottom-hint").style.display = "none";
-  } else if (viewId === "jobs-view") {
-    document.getElementById("jobs-controls").classList.add("active-controls");
-    document.getElementById("bottom-hint").style.display = "none";
-  } else if (viewId === "ai-view") {
-    document.getElementById("ai-controls").classList.add("active-controls");
-    document.getElementById("bottom-hint").style.display = "none";
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap &copy; CARTO",
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+
+  earthquakeLayer = L.layerGroup().addTo(map);
+  marketMarkersLayer = L.layerGroup();
+}
+
+function toggleLayers() {
+  if (activeLayer === "earthquakes") {
+    if (!map.hasLayer(earthquakeLayer)) map.addLayer(earthquakeLayer);
+    if (map.hasLayer(marketMarkersLayer)) map.removeLayer(marketMarkersLayer);
+  } else if (activeLayer === "markets") {
+    if (!map.hasLayer(marketMarkersLayer)) map.addLayer(marketMarkersLayer);
+    if (map.hasLayer(earthquakeLayer)) map.removeLayer(earthquakeLayer);
+  } else {
+    if (!map.hasLayer(earthquakeLayer)) map.addLayer(earthquakeLayer);
+    if (map.hasLayer(marketMarkersLayer)) map.removeLayer(marketMarkersLayer);
   }
 }
 
-new maplibregl.Marker({ element: createCustomMarker("youooo-marker") })
-  .setLngLat([-97.7431, 30.2672])
-  .setPopup(
-    makePopup("YOUOOO HQ", [
-      { label: "Type", value: "Command Node" },
-      { label: "Status", value: "Online" },
-      { label: "Region", value: "Austin, Texas, USA" }
-    ])
-  )
-  .addTo(map);
+async function loadAllData() {
+  setUpdatedTime();
+
+  await Promise.allSettled([
+    loadWatchlist(),
+    loadMarketMovers(),
+    loadEarthquakes(),
+    loadMarketNews(),
+    loadJobsFeed(),
+    loadAIFeed()
+  ]);
+
+  buildLiveAlerts();
+}
+
+function setUpdatedTime() {
+  const now = new Date();
+  document.getElementById("updatedAt").textContent =
+    `UPDATED: ${now.toLocaleString()}`;
+}
+
+async function loadWatchlist() {
+  const container = document.getElementById("watchlistGrid");
+  container.innerHTML = `<div class="empty-state">Loading watchlist...</div>`;
+
+  try {
+    const quotes = await Promise.all(WATCHLIST.map((symbol) => fetchQuote(symbol)));
+    container.innerHTML = quotes
+      .map((quote) => {
+        if (!quote) {
+          return `
+            <div class="quote-card">
+              <div class="symbol">N/A</div>
+              <div class="item-meta">Failed to load</div>
+            </div>
+          `;
+        }
+
+        const changeClass =
+          quote.percentChange > 0 ? "positive" :
+          quote.percentChange < 0 ? "negative" : "neutral";
+
+        return `
+          <div class="quote-card">
+            <div class="symbol">${quote.symbol}</div>
+            <div class="price">${quote.price}</div>
+            <div class="change ${changeClass}">
+              ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
+            </div>
+            <div class="item-meta">Prev close: ${quote.prevClose}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    renderMarketMarkers(quotes.filter(Boolean));
+  } catch (error) {
+    console.error("Watchlist load failed:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load watchlist.</div>`;
+  }
+}
+
+async function loadMarketMovers() {
+  const container = document.getElementById("marketMovers");
+  container.innerHTML = `<div class="empty-state">Loading movers...</div>`;
+
+  try {
+    const quotes = await Promise.all(MOVERS.map((symbol) => fetchQuote(symbol)));
+    const valid = quotes.filter(Boolean).sort((a, b) => b.percentChange - a.percentChange);
+    const top = [...valid.slice(0, 4), ...valid.slice(-2)].slice(0, 6);
+
+    container.innerHTML = top.map((item) => {
+      const cls = item.percentChange > 0 ? "positive" : item.percentChange < 0 ? "negative" : "neutral";
+      return `
+        <div class="list-item">
+          <div class="item-title">${item.symbol} — ${item.price}</div>
+          <div class="item-meta ${cls}">
+            ${formatSigned(item.change)} (${formatSigned(item.percentChange)}%)
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (error) {
+    console.error("Movers load failed:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load movers.</div>`;
+  }
+}
 
 async function loadEarthquakes() {
-  clearMarkers(earthquakeMarkers);
-
   try {
     const res = await fetch(
       "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
     );
     const data = await res.json();
-    const features = Array.isArray(data.features) ? data.features : [];
 
-    features.forEach((q) => {
-      const coords = q.geometry?.coordinates || [];
-      const lon = coords[0];
-      const lat = coords[1];
-      const mag = q.properties?.mag ?? "N/A";
-      const place = q.properties?.place ?? "Unknown";
-      const time = q.properties?.time
-        ? new Date(q.properties.time).toLocaleString()
-        : "Unknown";
+    earthquakeLayer.clearLayers();
 
-      if (typeof lon !== "number" || typeof lat !== "number") return;
+    data.features.slice(0, 40).forEach((feature) => {
+      const [lng, lat, depth] = feature.geometry.coordinates;
+      const mag = feature.properties.mag ?? 0;
+      const place = feature.properties.place || "Unknown location";
 
-      const marker = new maplibregl.Marker({
-        element: createCustomMarker("military-marker")
+      L.circleMarker([lat, lng], {
+        radius: Math.max(4, mag * 2),
+        weight: 1,
+        opacity: 0.9,
+        fillOpacity: 0.5
       })
-        .setLngLat([lon, lat])
-        .setPopup(
-          makePopup("SEISMIC EVENT", [
-            { label: "Location", value: place },
-            { label: "Magnitude", value: mag },
-            { label: "Time", value: time },
-            { label: "Source", value: "USGS" }
-          ])
-        )
-        .addTo(map);
-
-      earthquakeMarkers.push(marker);
+        .bindPopup(`
+          <strong>${place}</strong><br>
+          Magnitude: ${mag}<br>
+          Depth: ${depth} km
+        `)
+        .addTo(earthquakeLayer);
     });
-
-    setCount("eq-count", earthquakeMarkers.length);
-  } catch (err) {
-    console.error("Earthquake feed error:", err);
-    setCount("eq-count", 0);
+  } catch (error) {
+    console.error("Earthquake layer failed:", error);
   }
 }
 
-function getMapBBox() {
-  const b = map.getBounds();
-  return {
-    west: b.getWest(),
-    south: b.getSouth(),
-    east: b.getEast(),
-    north: b.getNorth()
-  };
-}
-
-async function loadAircraft() {
-  clearMarkers(aircraftMarkers);
+async function loadMarketNews() {
+  const container = document.getElementById("marketNews");
+  container.innerHTML = `<div class="empty-state">Loading market news...</div>`;
 
   try {
-    const bbox = getMapBBox();
-    const qs = new URLSearchParams({
-      west: String(bbox.west),
-      south: String(bbox.south),
-      east: String(bbox.east),
-      north: String(bbox.north)
-    });
+    const news = await fetchFinnhubNews("general");
+    const filtered = news.slice(0, 8);
 
-    const res = await fetch(`${BACKEND_BASE}/api/aircraft?${qs.toString()}`);
-    const data = await res.json();
-    const states = Array.isArray(data.states) ? data.states : [];
+    container.innerHTML = filtered.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("Market news failed:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load market news.</div>`;
+  }
+}
 
-    states.forEach((item) => {
-      const lon = item.longitude;
-      const lat = item.latitude;
-      if (typeof lon !== "number" || typeof lat !== "number") return;
+async function loadJobsFeed() {
+  const container = document.getElementById("jobsFeed");
+  container.innerHTML = `<div class="empty-state">Loading jobs intelligence...</div>`;
 
-      const marker = new maplibregl.Marker({
-        element: createCustomMarker("aircraft-marker")
+  try {
+    const news = await fetchFinnhubNews("general");
+    const filtered = news
+      .filter((item) => {
+        const text = `${item.headline || ""} ${item.summary || ""}`.toLowerCase();
+        return [
+          "layoff",
+          "job cut",
+          "workforce",
+          "restructuring",
+          "hiring",
+          "headcount",
+          "reduction",
+          "freeze"
+        ].some((term) => text.includes(term));
       })
-        .setLngLat([lon, lat])
-        .setPopup(
-          makePopup("AIRCRAFT", [
-            { label: "Callsign", value: item.callsign || "Unknown" },
-            { label: "ICAO24", value: item.icao24 || "Unknown" },
-            { label: "Country", value: item.origin_country || "Unknown" },
-            { label: "Altitude", value: item.baro_altitude ?? "N/A" },
-            { label: "Velocity", value: item.velocity ?? "N/A" },
-            { label: "Track", value: item.true_track ?? "N/A" }
-          ])
-        )
-        .addTo(map);
+      .slice(0, 8);
 
-      aircraftMarkers.push(marker);
-    });
-
-    setCount("aircraft-count", aircraftMarkers.length);
-  } catch (err) {
-    console.error("Aircraft feed error:", err);
-    setCount("aircraft-count", 0);
-  }
-}
-
-async function loadMarketTape() {
-  const symbols = ["SPY", "QQQ", "GLD", "USO", "AMD", "NVDA"];
-  const output = [];
-  const marketMap = {};
-
-  for (const symbol of symbols) {
-    try {
-      const res = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`
-      );
-      const data = await res.json();
-
-      if (typeof data.c === "number" && typeof data.pc === "number" && data.c !== 0) {
-        const current = data.c;
-        const previous = data.pc;
-        const change = current - previous;
-        const pct = previous ? (change / previous) * 100 : 0;
-        const arrow = change >= 0 ? "▲" : "▼";
-
-        const text = `${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`;
-        output.push(text);
-        marketMap[symbol] = text;
-      } else {
-        output.push(`${symbol} N/A`);
-        marketMap[symbol] = "N/A";
-      }
-    } catch (err) {
-      output.push(`${symbol} ERR`);
-      marketMap[symbol] = "ERR";
-    }
-  }
-
-  const tape = document.getElementById("market-data");
-  if (tape) tape.textContent = output.join("   |   ");
-
-  const ids = {
-    SPY: "mkt-spy",
-    QQQ: "mkt-qqq",
-    AMD: "mkt-amd",
-    NVDA: "mkt-nvda"
-  };
-
-  Object.entries(ids).forEach(([symbol, id]) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = marketMap[symbol] || "--";
-  });
-}
-
-async function refreshVisibleFeeds() {
-  const jobs = [loadMarketTape()];
-
-  if (document.getElementById("toggle-earthquakes")?.checked) {
-    jobs.push(loadEarthquakes());
-  } else {
-    clearMarkers(earthquakeMarkers);
-    setCount("eq-count", 0);
-  }
-
-  if (document.getElementById("toggle-aircraft")?.checked) {
-    jobs.push(loadAircraft());
-  } else {
-    clearMarkers(aircraftMarkers);
-    setCount("aircraft-count", 0);
-  }
-
-  await Promise.allSettled(jobs);
-  updateStamp();
-}
-
-function setupCollapse(buttonId, panelId) {
-  const button = document.getElementById(buttonId);
-  const panel = document.getElementById(panelId);
-  if (!button || !panel) return;
-
-  button.addEventListener("click", () => {
-    panel.classList.toggle("collapsed");
-  });
-}
-
-function clampPanelInsideViewport(panel) {
-  const rect = panel.getBoundingClientRect();
-  let left = rect.left;
-  let top = rect.top;
-
-  if (left < 8) left = 8;
-  if (top < 8) top = 8;
-  if (left + rect.width > window.innerWidth - 8) left = window.innerWidth - rect.width - 8;
-  if (top + rect.height > window.innerHeight - 8) top = window.innerHeight - rect.height - 8;
-
-  panel.style.left = `${left}px`;
-  panel.style.top = `${top}px`;
-  panel.style.right = "auto";
-}
-
-function makeDraggable(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  const header = panel.querySelector(".panel-top");
-  if (!header) return;
-
-  let isDragging = false;
-  let startX = 0;
-  let startY = 0;
-  let originLeft = 0;
-  let originTop = 0;
-
-  header.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button") || e.target.closest("a") || e.target.closest("input")) {
+    if (!filtered.length) {
+      container.innerHTML = `<div class="empty-state">No strong jobs signals found right now.</div>`;
       return;
     }
 
-    isDragging = true;
-    const rect = panel.getBoundingClientRect();
-    originLeft = rect.left;
-    originTop = rect.top;
-    startX = e.clientX;
-    startY = e.clientY;
-
-    panel.style.left = `${originLeft}px`;
-    panel.style.top = `${originTop}px`;
-    panel.style.right = "auto";
-  });
-
-  window.addEventListener("pointermove", (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    panel.style.left = `${originLeft + dx}px`;
-    panel.style.top = `${originTop + dy}px`;
-  });
-
-  window.addEventListener("pointerup", () => {
-    if (!isDragging) return;
-    isDragging = false;
-    clampPanelInsideViewport(panel);
-  });
+    container.innerHTML = filtered.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("Jobs feed failed:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load jobs intelligence.</div>`;
+  }
 }
 
-function setupListeners() {
-  document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      switchView(btn.dataset.view);
-    });
-  });
+async function loadAIFeed() {
+  const container = document.getElementById("aiFeed");
+  container.innerHTML = `<div class="empty-state">Loading AI alerts...</div>`;
 
-  document.getElementById("toggle-earthquakes")?.addEventListener("change", refreshVisibleFeeds);
-  document.getElementById("toggle-aircraft")?.addEventListener("change", refreshVisibleFeeds);
-  document.getElementById("refresh-all-btn")?.addEventListener("click", refreshVisibleFeeds);
+  try {
+    const news = await fetchFinnhubNews("general");
+    const filtered = news
+      .filter((item) => {
+        const text = `${item.headline || ""} ${item.summary || ""}`.toLowerCase();
+        return [
+          "openai",
+          "nvidia",
+          "amd",
+          "microsoft",
+          "google",
+          "meta",
+          "ai",
+          "artificial intelligence",
+          "chip",
+          "inference",
+          "training"
+        ].some((term) => text.includes(term));
+      })
+      .slice(0, 8);
 
-  map.on("moveend", async () => {
-    if (
-      document.getElementById("toggle-aircraft")?.checked &&
-      document.getElementById("world-view")?.classList.contains("active-view")
-    ) {
-      await loadAircraft();
-      updateStamp();
+    if (!filtered.length) {
+      container.innerHTML = `<div class="empty-state">No AI alerts found right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("AI feed failed:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load AI alerts.</div>`;
+  }
+}
+
+function buildLiveAlerts() {
+  const alerts = [];
+
+  document.querySelectorAll("#marketMovers .list-item").forEach((item, idx) => {
+    if (idx < 3) {
+      alerts.push(`📈 ${item.querySelector(".item-title")?.textContent || "Market move detected"}`);
     }
   });
 
-  window.addEventListener("resize", () => {
-    ["topbar", "sidebar", "alerts-panel"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) clampPanelInsideViewport(el);
+  document.querySelectorAll("#jobsFeed .news-item").forEach((item, idx) => {
+    if (idx < 2) {
+      alerts.push(`💼 ${item.querySelector(".news-title")?.textContent || "Jobs signal detected"}`);
+    }
+  });
+
+  document.querySelectorAll("#aiFeed .news-item").forEach((item, idx) => {
+    if (idx < 2) {
+      alerts.push(`🤖 ${item.querySelector(".news-title")?.textContent || "AI signal detected"}`);
+    }
+  });
+
+  const container = document.getElementById("liveAlerts");
+
+  if (!alerts.length) {
+    container.innerHTML = `<div class="empty-state">No alerts available right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = alerts.slice(0, 8).map((text) => `
+    <div class="alert-item">${escapeHtml(text)}</div>
+  `).join("");
+}
+
+async function fetchQuote(symbol) {
+  try {
+    let url;
+    if (symbol === "BTCUSD") {
+      url = `https://finnhub.io/api/v1/quote?symbol=BINANCE:BTCUSDT&token=${FINNHUB_API_KEY}`;
+    } else {
+      url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data || typeof data.c !== "number") return null;
+
+    return {
+      symbol,
+      price: formatPrice(data.c),
+      change: round2(data.d || 0),
+      percentChange: round2(data.dp || 0),
+      prevClose: formatPrice(data.pc || 0)
+    };
+  } catch (error) {
+    console.error(`Quote failed for ${symbol}:`, error);
+    return null;
+  }
+}
+
+async function fetchFinnhubNews(category = "general") {
+  const res = await fetch(
+    `https://finnhub.io/api/v1/news?category=${encodeURIComponent(category)}&token=${FINNHUB_API_KEY}`
+  );
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+function renderNewsItem(item) {
+  const title = escapeHtml(item.headline || "Untitled");
+  const source = escapeHtml(item.source || "Unknown source");
+  const summary = escapeHtml((item.summary || "").slice(0, 180));
+  const url = item.url || "#";
+  const time = item.datetime
+    ? new Date(item.datetime * 1000).toLocaleString()
+    : "Unknown time";
+
+  return `
+    <div class="news-item">
+      <div class="news-title">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>
+      </div>
+      <div class="news-source">${source} • ${time}</div>
+      <div class="item-meta">${summary}</div>
+    </div>
+  `;
+}
+
+function renderMarketMarkers(quotes) {
+  marketMarkersLayer.clearLayers();
+
+  const positions = {
+    SPY: [40.7128, -74.0060],
+    QQQ: [40.7128, -74.0060],
+    AMD: [30.2672, -97.7431],
+    NVDA: [37.3875, -122.0575],
+    TSLA: [30.2672, -97.7431],
+    BTCUSD: [25.7617, -80.1918]
+  };
+
+  quotes.forEach((quote) => {
+    const pos = positions[quote.symbol];
+    if (!pos) return;
+
+    const cls =
+      quote.percentChange > 0 ? "positive" :
+      quote.percentChange < 0 ? "negative" : "neutral";
+
+    const marker = L.circleMarker(pos, {
+      radius: 10,
+      weight: 1,
+      opacity: 0.9,
+      fillOpacity: 0.65
     });
-    map.resize();
+
+    marker.bindPopup(`
+      <strong>${quote.symbol}</strong><br>
+      Price: ${quote.price}<br>
+      <span class="${cls}">
+        ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
+      </span>
+    `);
+
+    marker.addTo(marketMarkersLayer);
   });
 
-  document.getElementById("toggle-ships")?.addEventListener("change", () => {
-    document.getElementById("ships-count").textContent = "next";
-  });
+  toggleLayers();
+}
 
-  document.getElementById("toggle-satellites")?.addEventListener("change", () => {
-    document.getElementById("sat-count").textContent = "next";
-  });
-
-  document.getElementById("toggle-missiles")?.addEventListener("change", () => {
-    document.getElementById("missile-count").textContent = "next";
+function formatPrice(value) {
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   });
 }
 
-setupCollapse("collapse-topbar-btn", "topbar");
-setupCollapse("collapse-sidebar-btn", "sidebar");
-setupCollapse("collapse-alerts-btn", "alerts-panel");
+function round2(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
 
-makeDraggable("topbar");
-makeDraggable("sidebar");
-makeDraggable("alerts-panel");
+function formatSigned(value) {
+  const num = Number(value);
+  return num > 0 ? `+${num}` : `${num}`;
+}
 
-setupListeners();
-switchView("world-view");
-refreshVisibleFeeds();
-setInterval(refreshVisibleFeeds, REFRESH_MS);
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
