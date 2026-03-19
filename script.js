@@ -74,6 +74,35 @@ function createCustomMarker(className) {
   return el;
 }
 
+function switchView(viewId) {
+  document.querySelectorAll(".app-view").forEach((view) => {
+    view.classList.toggle("active-view", view.id === viewId);
+  });
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === viewId);
+  });
+
+  document.querySelectorAll(".view-controls").forEach((box) => {
+    box.classList.remove("active-controls");
+  });
+
+  if (viewId === "world-view") {
+    document.getElementById("world-controls").classList.add("active-controls");
+    document.getElementById("bottom-hint").style.display = "block";
+    setTimeout(() => map.resize(), 100);
+  } else if (viewId === "markets-view") {
+    document.getElementById("markets-controls").classList.add("active-controls");
+    document.getElementById("bottom-hint").style.display = "none";
+  } else if (viewId === "jobs-view") {
+    document.getElementById("jobs-controls").classList.add("active-controls");
+    document.getElementById("bottom-hint").style.display = "none";
+  } else if (viewId === "ai-view") {
+    document.getElementById("ai-controls").classList.add("active-controls");
+    document.getElementById("bottom-hint").style.display = "none";
+  }
+}
+
 new maplibregl.Marker({ element: createCustomMarker("youooo-marker") })
   .setLngLat([-97.7431, 30.2672])
   .setPopup(
@@ -191,6 +220,7 @@ async function loadAircraft() {
 async function loadMarketTape() {
   const symbols = ["SPY", "QQQ", "GLD", "USO", "AMD", "NVDA"];
   const output = [];
+  const marketMap = {};
 
   for (const symbol of symbols) {
     try {
@@ -205,17 +235,34 @@ async function loadMarketTape() {
         const change = current - previous;
         const pct = previous ? (change / previous) * 100 : 0;
         const arrow = change >= 0 ? "▲" : "▼";
-        output.push(`${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`);
+
+        const text = `${symbol} ${current.toFixed(2)} ${arrow} ${pct.toFixed(2)}%`;
+        output.push(text);
+        marketMap[symbol] = text;
       } else {
         output.push(`${symbol} N/A`);
+        marketMap[symbol] = "N/A";
       }
     } catch (err) {
       output.push(`${symbol} ERR`);
+      marketMap[symbol] = "ERR";
     }
   }
 
-  const el = document.getElementById("market-data");
-  if (el) el.textContent = output.join("   |   ");
+  const tape = document.getElementById("market-data");
+  if (tape) tape.textContent = output.join("   |   ");
+
+  const ids = {
+    SPY: "mkt-spy",
+    QQQ: "mkt-qqq",
+    AMD: "mkt-amd",
+    NVDA: "mkt-nvda"
+  };
+
+  Object.entries(ids).forEach(([symbol, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = marketMap[symbol] || "--";
+  });
 }
 
 async function refreshVisibleFeeds() {
@@ -309,12 +356,21 @@ function makeDraggable(panelId) {
 }
 
 function setupListeners() {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      switchView(btn.dataset.view);
+    });
+  });
+
   document.getElementById("toggle-earthquakes")?.addEventListener("change", refreshVisibleFeeds);
   document.getElementById("toggle-aircraft")?.addEventListener("change", refreshVisibleFeeds);
   document.getElementById("refresh-all-btn")?.addEventListener("click", refreshVisibleFeeds);
 
   map.on("moveend", async () => {
-    if (document.getElementById("toggle-aircraft")?.checked) {
+    if (
+      document.getElementById("toggle-aircraft")?.checked &&
+      document.getElementById("world-view")?.classList.contains("active-view")
+    ) {
       await loadAircraft();
       updateStamp();
     }
@@ -325,6 +381,19 @@ function setupListeners() {
       const el = document.getElementById(id);
       if (el) clampPanelInsideViewport(el);
     });
+    map.resize();
+  });
+
+  document.getElementById("toggle-ships")?.addEventListener("change", () => {
+    document.getElementById("ships-count").textContent = "next";
+  });
+
+  document.getElementById("toggle-satellites")?.addEventListener("change", () => {
+    document.getElementById("sat-count").textContent = "next";
+  });
+
+  document.getElementById("toggle-missiles")?.addEventListener("change", () => {
+    document.getElementById("missile-count").textContent = "next";
   });
 }
 
@@ -337,5 +406,6 @@ makeDraggable("sidebar");
 makeDraggable("alerts-panel");
 
 setupListeners();
+switchView("world-view");
 refreshVisibleFeeds();
 setInterval(refreshVisibleFeeds, REFRESH_MS);
