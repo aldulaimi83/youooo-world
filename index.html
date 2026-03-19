@@ -19,7 +19,7 @@
     <header class="topbar">
       <div class="brand-block">
         <div class="brand">YOUOOO</div>
-        <div class="subtitle">Top world, market, jobs, and AI signals</div>
+        <div class="subtitle">Layoffs → Markets → AI → Global Risk</div>
       </div>
 
       <nav class="top-nav">
@@ -27,11 +27,13 @@
         <a href="#marketsTab">Markets</a>
         <a href="#jobsTab">Jobs</a>
         <a href="#aiTab">AI</a>
+        <a href="#riskTab">Risk</a>
       </nav>
 
       <div class="topbar-right">
         <div class="status-pill online">STATUS: ONLINE</div>
         <div class="status-pill live">MODE: LIVE</div>
+        <div class="status-pill premium">PRODUCT: V4</div>
         <div class="status-pill" id="updatedAt">UPDATED: --</div>
       </div>
     </header>
@@ -49,18 +51,20 @@
           <div class="layer-grid">
             <button class="layer-btn active" data-layer="earthquakes">Earthquakes</button>
             <button class="layer-btn" data-layer="markets">Market Impact</button>
-            <button class="layer-btn" data-layer="jobs">Jobs</button>
+            <button class="layer-btn" data-layer="jobs">Layoff Radar</button>
             <button class="layer-btn" data-layer="ai">AI Alerts</button>
+            <button class="layer-btn" data-layer="risk">Global Risk</button>
           </div>
 
           <div class="tag-row">
             <span class="tag">Ukraine</span>
             <span class="tag">Middle East</span>
             <span class="tag">Semis</span>
+            <span class="tag">Layoffs</span>
           </div>
 
           <p class="panel-note">
-            Track world events, company signals, and market reaction in one view.
+            Visualize world events, layoffs, market reaction, and AI infrastructure signals in one view.
           </p>
         </div>
 
@@ -81,10 +85,10 @@
             <div>
               <h2>Top Signals Now</h2>
               <p class="card-subtitle">
-                Ranked signals with severity, category, and why they matter.
+                Ranked market, jobs, AI, and risk signals with context and impact.
               </p>
             </div>
-            <div class="beta-badge">V3</div>
+            <div class="beta-badge">LIVE BETA</div>
           </div>
 
           <div class="signal-filters" id="signalFilters">
@@ -92,6 +96,7 @@
             <button class="filter-btn" data-filter="market">Markets</button>
             <button class="filter-btn" data-filter="jobs">Jobs</button>
             <button class="filter-btn" data-filter="ai">AI</button>
+            <button class="filter-btn" data-filter="risk">Risk</button>
           </div>
 
           <div id="topSignalsList" class="top-signals-list">
@@ -103,28 +108,48 @@
           <button class="tab-btn active" data-tab="marketsTab">Markets</button>
           <button class="tab-btn" data-tab="jobsTab">Jobs</button>
           <button class="tab-btn" data-tab="aiTab">AI</button>
+          <button class="tab-btn" data-tab="riskTab">Risk</button>
         </nav>
 
         <section id="marketsTab" class="tab-content active">
           <div class="card">
-            <h2>Market Snapshot</h2>
+            <div class="section-headline-row">
+              <h2>Market + Geopolitics Engine</h2>
+              <span class="trend-pill neutral">Impact Model: Live</span>
+            </div>
+
             <p class="card-subtitle">
-              Watch price action, movers, and headlines tied to market sentiment.
+              Price action, market movers, and cause → effect intelligence from world events.
             </p>
 
-            <h3>Top Watchlist</h3>
-            <div id="watchlistGrid" class="watchlist-grid">
-              <div class="empty-state">Loading watchlist...</div>
+            <div class="intelligence-grid two-col">
+              <div class="mini-card">
+                <h3>Top Watchlist</h3>
+                <div id="watchlistGrid" class="watchlist-grid">
+                  <div class="empty-state">Loading watchlist...</div>
+                </div>
+              </div>
+
+              <div class="mini-card">
+                <h3>Market Movers</h3>
+                <div id="marketMovers" class="list-block">
+                  <div class="empty-state">Loading movers...</div>
+                </div>
+              </div>
             </div>
 
-            <h3>Market Movers</h3>
-            <div id="marketMovers" class="list-block">
-              <div class="empty-state">Loading movers...</div>
+            <div class="mini-card">
+              <h3>Impact Engine</h3>
+              <div id="impactEngine" class="impact-grid">
+                <div class="empty-state">Building impact intelligence...</div>
+              </div>
             </div>
 
-            <h3>World + Market Feed</h3>
-            <div id="marketNews" class="news-feed">
-              <div class="empty-state">Loading market news...</div>
+            <div class="mini-card">
+              <h3>World + Market Feed</h3>
+              <div id="marketNews" class="news-feed">
+                <div class="empty-state">Loading market news...</div>
+              </div>
             </div>
           </div>
         </section>
@@ -132,11 +157,11 @@
         <section id="jobsTab" class="tab-content">
           <div class="card">
             <div class="section-headline-row">
-              <h2>Layoff Radar</h2>
-              <span class="trend-pill danger">Trend: Negative</span>
+              <h2>Layoff Radar + Hiring Shift Intelligence</h2>
+              <span class="trend-pill danger">Core Product</span>
             </div>
             <p class="card-subtitle">
-              Hiring slowdowns, layoffs, restructuring, and workforce signals.
+              Track layoffs, restructuring, hiring slowdowns, and where talent may shift next.
             </p>
 
             <div class="chips">
@@ -146,11 +171,47 @@
               <span class="chip">Amazon</span>
               <span class="chip">AMD</span>
               <span class="chip">Intel</span>
+              <span class="chip">Tesla</span>
+              <span class="chip">NVIDIA</span>
             </div>
 
-            <h3>Jobs Intelligence</h3>
-            <div id="jobsFeed" class="news-feed">
-              <div class="empty-state">Loading jobs intelligence...</div>
+            <div class="intelligence-grid two-col">
+              <div class="mini-card">
+                <h3>Company Risk Scoreboard</h3>
+                <div id="companyRiskBoard" class="risk-board">
+                  <div class="empty-state">Building risk scores...</div>
+                </div>
+              </div>
+
+              <div class="mini-card">
+                <h3>Sector Heatmap</h3>
+                <div id="sectorHeatmap" class="heatmap-grid">
+                  <div class="empty-state">Building sector heatmap...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="intelligence-grid two-col">
+              <div class="mini-card">
+                <h3>Layoff Timeline</h3>
+                <div id="layoffTimeline" class="timeline">
+                  <div class="empty-state">Loading layoff timeline...</div>
+                </div>
+              </div>
+
+              <div class="mini-card">
+                <h3>Who Is Hiring Instead</h3>
+                <div id="hiringShift" class="shift-list">
+                  <div class="empty-state">Finding hiring shift intelligence...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <h3>Jobs Intelligence Feed</h3>
+              <div id="jobsFeed" class="news-feed">
+                <div class="empty-state">Loading jobs intelligence...</div>
+              </div>
             </div>
           </div>
         </section>
@@ -158,25 +219,79 @@
         <section id="aiTab" class="tab-content">
           <div class="card">
             <div class="section-headline-row">
-              <h2>AI Intelligence</h2>
+              <h2>AI / Semiconductor Intelligence</h2>
               <span class="trend-pill success">Trend: Strong Growth</span>
             </div>
             <p class="card-subtitle">
-              AI launches, chip demand, cloud competition, and infrastructure signals.
+              AI launches, GPU demand, chip competition, cloud infrastructure, and semis sentiment.
             </p>
 
             <div class="chips">
               <span class="chip">OpenAI</span>
               <span class="chip">NVIDIA</span>
               <span class="chip">AMD</span>
+              <span class="chip">TSMC</span>
               <span class="chip">Microsoft</span>
               <span class="chip">Google</span>
               <span class="chip">Meta</span>
             </div>
 
-            <h3>AI Signals</h3>
-            <div id="aiFeed" class="news-feed">
-              <div class="empty-state">Loading AI alerts...</div>
+            <div class="intelligence-grid two-col">
+              <div class="mini-card">
+                <h3>AI Infra Signals</h3>
+                <div id="aiSignalsBoard" class="signal-summary-grid">
+                  <div class="empty-state">Loading AI infrastructure signals...</div>
+                </div>
+              </div>
+
+              <div class="mini-card">
+                <h3>Chip War Tracker</h3>
+                <div id="chipWarTracker" class="tracker-list">
+                  <div class="empty-state">Building semiconductor tracker...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <h3>AI Feed</h3>
+              <div id="aiFeed" class="news-feed">
+                <div class="empty-state">Loading AI alerts...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="riskTab" class="tab-content">
+          <div class="card">
+            <div class="section-headline-row">
+              <h2>Global Risk Monitor</h2>
+              <span class="trend-pill warning">Business Risk Layer</span>
+            </div>
+            <p class="card-subtitle">
+              Regional instability, conflict signals, supply chain pressure, and commodity shock impact.
+            </p>
+
+            <div class="intelligence-grid two-col">
+              <div class="mini-card">
+                <h3>Regional Risk Levels</h3>
+                <div id="regionalRiskBoard" class="risk-regions">
+                  <div class="empty-state">Building regional risk board...</div>
+                </div>
+              </div>
+
+              <div class="mini-card">
+                <h3>Conflict → Market Impact</h3>
+                <div id="conflictImpact" class="impact-grid">
+                  <div class="empty-state">Linking conflict impact...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <h3>Risk Feed</h3>
+              <div id="riskFeed" class="news-feed">
+                <div class="empty-state">Loading global risk feed...</div>
+              </div>
             </div>
           </div>
         </section>
