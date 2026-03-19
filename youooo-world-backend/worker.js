@@ -1,44 +1,121 @@
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json; charset=utf-8",
+  "Cache-Control": "no-store"
+};
+
+const WATCHLIST = ["SPY", "QQQ", "AMD", "NVDA", "TSLA", "AAPL", "MSFT", "META", "AMZN", "GOOGL"];
+
+const JOB_KEYWORDS = [
+  "layoff",
+  "layoffs",
+  "job cut",
+  "job cuts",
+  "workforce",
+  "restructuring",
+  "headcount",
+  "hiring freeze",
+  "staff reduction",
+  "downsizing"
+];
+
+const AI_KEYWORDS = [
+  "openai",
+  "nvidia",
+  "amd",
+  "microsoft",
+  "google",
+  "meta",
+  "artificial intelligence",
+  "ai",
+  "chip",
+  "inference",
+  "training",
+  "datacenter",
+  "gpu"
+];
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders() });
+      return new Response(null, { headers: CORS_HEADERS });
     }
 
+    const url = new URL(request.url);
+    const path = url.pathname;
+
     try {
-      if (url.pathname === "/api/aircraft") {
-        return await handleAircraft(url);
-      }
-
-      if (url.pathname === "/api/conflicts") {
-        return await handleConflicts(url, env);
-      }
-
-      if (url.pathname === "/api/fires") {
-        return await handleFires(url, env);
-      }
-
-      if (url.pathname === "/api/health") {
-        return jsonResponse({
+      if (path === "/api/health") {
+        return json({
           ok: true,
-          service: "youooo-world-backend",
+          service: "youooo-world-api",
           time: new Date().toISOString()
         });
       }
 
-      return jsonResponse(
-        {
-          ok: false,
-          error: "Not found"
-        },
-        404
-      );
+      if (path === "/api/watchlist") {
+        const data = await getWatchlist(env);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data
+        });
+      }
+
+      if (path === "/api/movers") {
+        const data = await getMovers(env);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data
+        });
+      }
+
+      if (path === "/api/news") {
+        const category = url.searchParams.get("category") || "general";
+        const news = await getNews(env, category);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data: news
+        });
+      }
+
+      if (path === "/api/jobs") {
+        const jobs = await getJobsSignals(env);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data: jobs
+        });
+      }
+
+      if (path === "/api/ai") {
+        const ai = await getAISignals(env);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data: ai
+        });
+      }
+
+      if (path === "/api/signals") {
+        const signals = await getTopSignals(env);
+        return json({
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          data: signals
+        });
+      }
+
+      return json({ ok: false, error: "Not found" }, 404);
     } catch (error) {
-      return jsonResponse(
+      return json(
         {
           ok: false,
-          error: error.message || "Unknown server error"
+          error: error?.message || "Unknown server error"
         },
         500
       );
@@ -46,296 +123,165 @@ export default {
   }
 };
 
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization"
-  };
+async function getWatchlist(env) {
+  const quotes = await Promise.all(WATCHLIST.map((symbol) => fetchQuote(env, symbol)));
+  return quotes.filter(Boolean);
 }
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders()
-    }
-  });
+async function getMovers(env) {
+  const quotes = await Promise.all(WATCHLIST.map((symbol) => fetchQuote(env, symbol)));
+  return quotes
+    .filter(Boolean)
+    .sort((a, b) => Math.abs(b.percentChange) - Math.abs(a.percentChange))
+    .slice(0, 6);
 }
 
-async function handleAircraft(url) {
-  const west = clampCoord(url.searchParams.get("west"), -180, 180, -180);
-  const south = clampCoord(url.searchParams.get("south"), -90, 90, -90);
-  const east = clampCoord(url.searchParams.get("east"), -180, 180, 180);
-  const north = clampCoord(url.searchParams.get("north"), -90, 90, 90);
+async function getNews(env, category = "general") {
+  const data = await fetchFinnhubNews(env, category);
+  return data.slice(0, 12).map(normalizeNews);
+}
 
-  const openskyUrl =
-    `https://opensky-network.org/api/states/all` +
-    `?lamin=${south}&lomin=${west}&lamax=${north}&lomax=${east}`;
+async function getJobsSignals(env) {
+  const data = await fetchFinnhubNews(env, "general");
 
-  const res = await fetch(openskyUrl, {
-    headers: {
-      "User-Agent": "youooo-world/1.0"
-    }
-  });
-
-  if (!res.ok) {
-    throw new Error(`OpenSky request failed with status ${res.status}`);
-  }
-
-  const data = await res.json();
-  const states = Array.isArray(data.states) ? data.states : [];
-
-  const normalized = states
-    .map((s) => ({
-      icao24: s[0],
-      callsign: s[1] ? String(s[1]).trim() : "",
-      origin_country: s[2],
-      longitude: s[5],
-      latitude: s[6],
-      baro_altitude: s[7],
-      on_ground: s[8],
-      velocity: s[9],
-      true_track: s[10],
-      vertical_rate: s[11]
+  return data
+    .map(normalizeNews)
+    .map((item) => ({
+      ...item,
+      score: keywordScore(`${item.title} ${item.summary}`, JOB_KEYWORDS)
     }))
-    .filter((s) => Number.isFinite(s.longitude) && Number.isFinite(s.latitude))
-    .slice(0, 600);
-
-  return jsonResponse({
-    ok: true,
-    source: "opensky",
-    count: normalized.length,
-    states: normalized
-  });
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+    .slice(0, 10);
 }
 
-async function handleConflicts(url, env) {
-  if (!env.ACLED_TOKEN) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Missing ACLED_TOKEN secret in Cloudflare Worker"
-      },
-      500
-    );
-  }
+async function getAISignals(env) {
+  const data = await fetchFinnhubNews(env, "general");
 
-  const region = url.searchParams.get("region") || "ukraine";
-  const config = getConflictRegionConfig(region);
-
-  const today = new Date();
-  const from = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const fromStr = toDateString(from);
-  const toStr = toDateString(today);
-
-  const apiUrl = new URL("https://acleddata.com/api/acled/read");
-  apiUrl.searchParams.set("limit", "500");
-  apiUrl.searchParams.set("event_date", `${fromStr}|${toStr}`);
-  apiUrl.searchParams.set("event_date_where", "BETWEEN");
-  apiUrl.searchParams.set("_format", "json");
-  apiUrl.searchParams.set("country", config.countries.join("|"));
-
-  const res = await fetch(apiUrl.toString(), {
-    headers: {
-      Authorization: `Bearer ${env.ACLED_TOKEN}`
-    }
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`ACLED request failed ${res.status}: ${text.slice(0, 200)}`);
-  }
-
-  const payload = await res.json();
-  const data = Array.isArray(payload.data) ? payload.data : [];
-
-  const events = data
-    .map((e) => ({
-      country: e.country,
-      admin1: e.admin1,
-      location: e.location,
-      latitude: e.latitude,
-      longitude: e.longitude,
-      event_type: e.event_type,
-      sub_event_type: e.sub_event_type,
-      event_date: e.event_date,
-      fatalities: e.fatalities
+  return data
+    .map(normalizeNews)
+    .map((item) => ({
+      ...item,
+      score: keywordScore(`${item.title} ${item.summary}`, AI_KEYWORDS)
     }))
-    .filter((e) => Number.isFinite(Number(e.latitude)) && Number.isFinite(Number(e.longitude)))
-    .slice(0, 400);
-
-  return jsonResponse({
-    ok: true,
-    source: "acled",
-    region,
-    count: events.length,
-    events
-  });
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+    .slice(0, 10);
 }
 
-function getConflictRegionConfig(region) {
-  const regions = {
-    ukraine: {
-      countries: ["Ukraine", "Russia", "Belarus"]
-    },
-    "middle-east": {
-      countries: [
-        "Israel",
-        "Palestine",
-        "Lebanon",
-        "Syria",
-        "Iraq",
-        "Iran",
-        "Yemen",
-        "Jordan"
-      ]
-    },
-    africa: {
-      countries: [
-        "Sudan",
-        "South Sudan",
-        "Somalia",
-        "Ethiopia",
-        "Democratic Republic of Congo",
-        "Nigeria",
-        "Mali",
-        "Niger",
-        "Mozambique"
-      ]
-    }
-  };
+async function getTopSignals(env) {
+  const [movers, jobs, ai] = await Promise.all([
+    getMovers(env),
+    getJobsSignals(env),
+    getAISignals(env)
+  ]);
 
-  return regions[region] || regions.ukraine;
-}
+  const signals = [];
 
-async function handleFires(url, env) {
-  if (!env.FIRMS_MAP_KEY) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Missing FIRMS_MAP_KEY secret in Cloudflare Worker"
-      },
-      500
-    );
-  }
-
-  const bbox = sanitizeBbox(url.searchParams.get("bbox") || "world");
-  const source = "VIIRS_SNPP_NRT";
-  const dayRange = "1";
-
-  const firmsUrl = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${env.FIRMS_MAP_KEY}/${source}/${bbox}/${dayRange}`;
-
-  const res = await fetch(firmsUrl, {
-    headers: {
-      "User-Agent": "youooo-world/1.0"
-    }
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`FIRMS request failed ${res.status}: ${text.slice(0, 200)}`);
-  }
-
-  const csvText = await res.text();
-  const rows = parseCsv(csvText);
-
-  const fires = rows
-    .map((row) => ({
-      latitude: row.latitude,
-      longitude: row.longitude,
-      bright_ti4: row.bright_ti4,
-      brightness: row.brightness,
-      confidence: row.confidence,
-      acq_date: row.acq_date,
-      acq_time: row.acq_time
-    }))
-    .filter((f) => Number.isFinite(Number(f.latitude)) && Number.isFinite(Number(f.longitude)))
-    .slice(0, 800);
-
-  return jsonResponse({
-    ok: true,
-    source: "firms",
-    count: fires.length,
-    fires
-  });
-}
-
-function clampCoord(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function sanitizeBbox(value) {
-  if (value === "world") return "world";
-
-  const parts = String(value).split(",").map(Number);
-  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
-    return "world";
-  }
-
-  const west = Math.max(-180, Math.min(180, parts[0]));
-  const south = Math.max(-90, Math.min(90, parts[1]));
-  const east = Math.max(-180, Math.min(180, parts[2]));
-  const north = Math.max(-90, Math.min(90, parts[3]));
-
-  return `${west},${south},${east},${north}`;
-}
-
-function toDateString(d) {
-  return d.toISOString().slice(0, 10);
-}
-
-function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-
-  const headers = splitCsvLine(lines[0]);
-  const rows = [];
-
-  for (let i = 1; i < lines.length; i += 1) {
-    const values = splitCsvLine(lines[i]);
-    const row = {};
-    headers.forEach((h, index) => {
-      row[h] = values[index] ?? "";
+  for (const mover of movers.slice(0, 4)) {
+    signals.push({
+      type: "market",
+      priority: Math.abs(mover.percentChange),
+      title: `${mover.symbol} moved ${signed(mover.percentChange)}%`,
+      summary: `Price ${mover.price} | Change ${signed(mover.change)} (${signed(mover.percentChange)}%)`,
+      url: null,
+      timestamp: Date.now()
     });
-    rows.push(row);
   }
 
-  return rows;
+  for (const item of jobs.slice(0, 3)) {
+    signals.push({
+      type: "jobs",
+      priority: 50 + item.score,
+      title: item.title,
+      summary: item.summary,
+      url: item.url,
+      timestamp: item.timestamp
+    });
+  }
+
+  for (const item of ai.slice(0, 3)) {
+    signals.push({
+      type: "ai",
+      priority: 40 + item.score,
+      title: item.title,
+      summary: item.summary,
+      url: item.url,
+      timestamp: item.timestamp
+    });
+  }
+
+  return signals
+    .sort((a, b) => b.priority - a.priority || b.timestamp - a.timestamp)
+    .slice(0, 10);
 }
 
-function splitCsvLine(line) {
-  const out = [];
-  let current = "";
-  let inQuotes = false;
+async function fetchQuote(env, symbol) {
+  const actualSymbol = symbol === "BTCUSD" ? "BINANCE:BTCUSDT" : symbol;
+  const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(actualSymbol)}&token=${env.FINNHUB_API_KEY}`;
 
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    const next = line[i + 1];
-
-    if (ch === '"' && inQuotes && next === '"') {
-      current += '"';
-      i += 1;
-      continue;
-    }
-
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (ch === "," && !inQuotes) {
-      out.push(current);
-      current = "";
-      continue;
-    }
-
-    current += ch;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Quote request failed for ${symbol}: ${response.status}`);
   }
 
-  out.push(current);
-  return out;
+  const data = await response.json();
+  if (typeof data?.c !== "number") return null;
+
+  return {
+    symbol,
+    price: round2(data.c),
+    change: round2(data.d || 0),
+    percentChange: round2(data.dp || 0),
+    prevClose: round2(data.pc || 0)
+  };
+}
+
+async function fetchFinnhubNews(env, category = "general") {
+  const url = `https://finnhub.io/api/v1/news?category=${encodeURIComponent(category)}&token=${env.FINNHUB_API_KEY}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`News request failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+function normalizeNews(item) {
+  return {
+    title: item?.headline || "Untitled",
+    summary: item?.summary || "",
+    source: item?.source || "Unknown source",
+    url: item?.url || null,
+    timestamp: typeof item?.datetime === "number" ? item.datetime * 1000 : Date.now()
+  };
+}
+
+function keywordScore(text, keywords) {
+  const haystack = String(text || "").toLowerCase();
+  let score = 0;
+
+  for (const word of keywords) {
+    if (haystack.includes(word)) score += 10;
+  }
+
+  return score;
+}
+
+function signed(value) {
+  const n = Number(value || 0);
+  return n > 0 ? `+${round2(n)}` : `${round2(n)}`;
+}
+
+function round2(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+function json(payload, status = 200) {
+  return new Response(JSON.stringify(payload, null, 2), {
+    status,
+    headers: CORS_HEADERS
+  });
 }

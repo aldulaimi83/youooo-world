@@ -1,12 +1,4 @@
-
-const FINNHUB_API_KEY = "d6sv32pr01qoqoirkkfgd6sv32pr01qoqoirkkg0";
-
-const WATCHLIST = ["SPY", "QQQ", "AMD", "NVDA", "TSLA", "BTCUSD"];
-const MOVERS = ["AMD", "NVDA", "TSLA", "AAPL", "MSFT", "META", "AMZN", "GOOGL"];
-const JOBS_QUERY =
-  "layoffs OR hiring freeze OR job cuts OR workforce OR restructuring Amazon OR Google OR Meta OR Microsoft OR Intel OR AMD";
-const AI_QUERY =
-  "OpenAI OR NVIDIA OR AMD OR Google AI OR Microsoft AI OR Meta AI OR AI chips OR AI regulation";
+const API_BASE = "https://youooo-world-api.youooo.workers.dev";
 
 let map;
 let earthquakeLayer;
@@ -21,6 +13,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   setInterval(loadAllData, 5 * 60 * 1000);
 });
 
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 function setupTabs() {
   const buttons = document.querySelectorAll(".tab-btn");
   const contents = document.querySelectorAll(".tab-content");
@@ -29,7 +25,6 @@ function setupTabs() {
     btn.addEventListener("click", () => {
       buttons.forEach((b) => b.classList.remove("active"));
       contents.forEach((c) => c.classList.remove("active"));
-
       btn.classList.add("active");
       document.getElementById(btn.dataset.tab).classList.add("active");
     });
@@ -86,16 +81,22 @@ async function loadAllData() {
     loadEarthquakes(),
     loadMarketNews(),
     loadJobsFeed(),
-    loadAIFeed()
+    loadAIFeed(),
+    loadSignalAlerts()
   ]);
-
-  buildLiveAlerts();
 }
 
 function setUpdatedTime() {
   const now = new Date();
-  document.getElementById("updatedAt").textContent =
-    `UPDATED: ${now.toLocaleString()}`;
+  document.getElementById("updatedAt").textContent = `UPDATED: ${now.toLocaleString()}`;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.json();
 }
 
 async function loadWatchlist() {
@@ -103,38 +104,34 @@ async function loadWatchlist() {
   container.innerHTML = `<div class="empty-state">Loading watchlist...</div>`;
 
   try {
-    const quotes = await Promise.all(WATCHLIST.map((symbol) => fetchQuote(symbol)));
-    container.innerHTML = quotes
-      .map((quote) => {
-        if (!quote) {
-          return `
-            <div class="quote-card">
-              <div class="symbol">N/A</div>
-              <div class="item-meta">Failed to load</div>
-            </div>
-          `;
-        }
+    const payload = await fetchJson(apiUrl("/api/watchlist"));
+    const quotes = payload.data || [];
 
-        const changeClass =
-          quote.percentChange > 0 ? "positive" :
-          quote.percentChange < 0 ? "negative" : "neutral";
+    if (!quotes.length) {
+      container.innerHTML = `<div class="empty-state">No watchlist data found.</div>`;
+      return;
+    }
 
-        return `
-          <div class="quote-card">
-            <div class="symbol">${quote.symbol}</div>
-            <div class="price">${quote.price}</div>
-            <div class="change ${changeClass}">
-              ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
-            </div>
-            <div class="item-meta">Prev close: ${quote.prevClose}</div>
+    container.innerHTML = quotes.map((quote) => {
+      const changeClass =
+        quote.percentChange > 0 ? "positive" :
+        quote.percentChange < 0 ? "negative" : "neutral";
+
+      return `
+        <div class="quote-card">
+          <div class="symbol">${escapeHtml(quote.symbol)}</div>
+          <div class="price">${formatPrice(quote.price)}</div>
+          <div class="change ${changeClass}">
+            ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
           </div>
-        `;
-      })
-      .join("");
+          <div class="item-meta">Prev close: ${formatPrice(quote.prevClose)}</div>
+        </div>
+      `;
+    }).join("");
 
-    renderMarketMarkers(quotes.filter(Boolean));
+    renderMarketMarkers(quotes);
   } catch (error) {
-    console.error("Watchlist load failed:", error);
+    console.error(error);
     container.innerHTML = `<div class="empty-state">Failed to load watchlist.</div>`;
   }
 }
@@ -144,15 +141,22 @@ async function loadMarketMovers() {
   container.innerHTML = `<div class="empty-state">Loading movers...</div>`;
 
   try {
-    const quotes = await Promise.all(MOVERS.map((symbol) => fetchQuote(symbol)));
-    const valid = quotes.filter(Boolean).sort((a, b) => b.percentChange - a.percentChange);
-    const top = [...valid.slice(0, 4), ...valid.slice(-2)].slice(0, 6);
+    const payload = await fetchJson(apiUrl("/api/movers"));
+    const items = payload.data || [];
 
-    container.innerHTML = top.map((item) => {
-      const cls = item.percentChange > 0 ? "positive" : item.percentChange < 0 ? "negative" : "neutral";
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No movers found.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map((item) => {
+      const cls =
+        item.percentChange > 0 ? "positive" :
+        item.percentChange < 0 ? "negative" : "neutral";
+
       return `
         <div class="list-item">
-          <div class="item-title">${item.symbol} — ${item.price}</div>
+          <div class="item-title">${escapeHtml(item.symbol)} — ${formatPrice(item.price)}</div>
           <div class="item-meta ${cls}">
             ${formatSigned(item.change)} (${formatSigned(item.percentChange)}%)
           </div>
@@ -160,16 +164,106 @@ async function loadMarketMovers() {
       `;
     }).join("");
   } catch (error) {
-    console.error("Movers load failed:", error);
+    console.error(error);
     container.innerHTML = `<div class="empty-state">Failed to load movers.</div>`;
+  }
+}
+
+async function loadMarketNews() {
+  const container = document.getElementById("marketNews");
+  container.innerHTML = `<div class="empty-state">Loading market news...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/news?category=general"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No market news found.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.slice(0, 8).map(renderNewsItem).join("");
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div class="empty-state">Failed to load market news.</div>`;
+  }
+}
+
+async function loadJobsFeed() {
+  const container = document.getElementById("jobsFeed");
+  container.innerHTML = `<div class="empty-state">Loading jobs intelligence...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/jobs"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No jobs signals found right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div class="empty-state">Failed to load jobs intelligence.</div>`;
+  }
+}
+
+async function loadAIFeed() {
+  const container = document.getElementById("aiFeed");
+  container.innerHTML = `<div class="empty-state">Loading AI alerts...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/ai"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No AI alerts found right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div class="empty-state">Failed to load AI alerts.</div>`;
+  }
+}
+
+async function loadSignalAlerts() {
+  const container = document.getElementById("liveAlerts");
+  container.innerHTML = `<div class="empty-state">Loading alerts...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/signals"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No alerts available right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map((item) => {
+      const emoji =
+        item.type === "market" ? "📈" :
+        item.type === "jobs" ? "💼" :
+        item.type === "ai" ? "🤖" : "🌍";
+
+      const title = escapeHtml(item.title || "Alert");
+      const content = item.url
+        ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${title}</a>`
+        : title;
+
+      return `<div class="alert-item">${emoji} ${content}</div>`;
+    }).join("");
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div class="empty-state">Failed to load alerts.</div>`;
   }
 }
 
 async function loadEarthquakes() {
   try {
-    const res = await fetch(
-      "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
-    );
+    const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
     const data = await res.json();
 
     earthquakeLayer.clearLayers();
@@ -185,180 +279,24 @@ async function loadEarthquakes() {
         opacity: 0.9,
         fillOpacity: 0.5
       })
-        .bindPopup(`
-          <strong>${place}</strong><br>
-          Magnitude: ${mag}<br>
-          Depth: ${depth} km
-        `)
-        .addTo(earthquakeLayer);
+      .bindPopup(`
+        <strong>${escapeHtml(place)}</strong><br>
+        Magnitude: ${mag}<br>
+        Depth: ${depth} km
+      `)
+      .addTo(earthquakeLayer);
     });
   } catch (error) {
     console.error("Earthquake layer failed:", error);
   }
 }
 
-async function loadMarketNews() {
-  const container = document.getElementById("marketNews");
-  container.innerHTML = `<div class="empty-state">Loading market news...</div>`;
-
-  try {
-    const news = await fetchFinnhubNews("general");
-    const filtered = news.slice(0, 8);
-
-    container.innerHTML = filtered.map(renderNewsItem).join("");
-  } catch (error) {
-    console.error("Market news failed:", error);
-    container.innerHTML = `<div class="empty-state">Failed to load market news.</div>`;
-  }
-}
-
-async function loadJobsFeed() {
-  const container = document.getElementById("jobsFeed");
-  container.innerHTML = `<div class="empty-state">Loading jobs intelligence...</div>`;
-
-  try {
-    const news = await fetchFinnhubNews("general");
-    const filtered = news
-      .filter((item) => {
-        const text = `${item.headline || ""} ${item.summary || ""}`.toLowerCase();
-        return [
-          "layoff",
-          "job cut",
-          "workforce",
-          "restructuring",
-          "hiring",
-          "headcount",
-          "reduction",
-          "freeze"
-        ].some((term) => text.includes(term));
-      })
-      .slice(0, 8);
-
-    if (!filtered.length) {
-      container.innerHTML = `<div class="empty-state">No strong jobs signals found right now.</div>`;
-      return;
-    }
-
-    container.innerHTML = filtered.map(renderNewsItem).join("");
-  } catch (error) {
-    console.error("Jobs feed failed:", error);
-    container.innerHTML = `<div class="empty-state">Failed to load jobs intelligence.</div>`;
-  }
-}
-
-async function loadAIFeed() {
-  const container = document.getElementById("aiFeed");
-  container.innerHTML = `<div class="empty-state">Loading AI alerts...</div>`;
-
-  try {
-    const news = await fetchFinnhubNews("general");
-    const filtered = news
-      .filter((item) => {
-        const text = `${item.headline || ""} ${item.summary || ""}`.toLowerCase();
-        return [
-          "openai",
-          "nvidia",
-          "amd",
-          "microsoft",
-          "google",
-          "meta",
-          "ai",
-          "artificial intelligence",
-          "chip",
-          "inference",
-          "training"
-        ].some((term) => text.includes(term));
-      })
-      .slice(0, 8);
-
-    if (!filtered.length) {
-      container.innerHTML = `<div class="empty-state">No AI alerts found right now.</div>`;
-      return;
-    }
-
-    container.innerHTML = filtered.map(renderNewsItem).join("");
-  } catch (error) {
-    console.error("AI feed failed:", error);
-    container.innerHTML = `<div class="empty-state">Failed to load AI alerts.</div>`;
-  }
-}
-
-function buildLiveAlerts() {
-  const alerts = [];
-
-  document.querySelectorAll("#marketMovers .list-item").forEach((item, idx) => {
-    if (idx < 3) {
-      alerts.push(`📈 ${item.querySelector(".item-title")?.textContent || "Market move detected"}`);
-    }
-  });
-
-  document.querySelectorAll("#jobsFeed .news-item").forEach((item, idx) => {
-    if (idx < 2) {
-      alerts.push(`💼 ${item.querySelector(".news-title")?.textContent || "Jobs signal detected"}`);
-    }
-  });
-
-  document.querySelectorAll("#aiFeed .news-item").forEach((item, idx) => {
-    if (idx < 2) {
-      alerts.push(`🤖 ${item.querySelector(".news-title")?.textContent || "AI signal detected"}`);
-    }
-  });
-
-  const container = document.getElementById("liveAlerts");
-
-  if (!alerts.length) {
-    container.innerHTML = `<div class="empty-state">No alerts available right now.</div>`;
-    return;
-  }
-
-  container.innerHTML = alerts.slice(0, 8).map((text) => `
-    <div class="alert-item">${escapeHtml(text)}</div>
-  `).join("");
-}
-
-async function fetchQuote(symbol) {
-  try {
-    let url;
-    if (symbol === "BTCUSD") {
-      url = `https://finnhub.io/api/v1/quote?symbol=BINANCE:BTCUSDT&token=${FINNHUB_API_KEY}`;
-    } else {
-      url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
-    }
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!data || typeof data.c !== "number") return null;
-
-    return {
-      symbol,
-      price: formatPrice(data.c),
-      change: round2(data.d || 0),
-      percentChange: round2(data.dp || 0),
-      prevClose: formatPrice(data.pc || 0)
-    };
-  } catch (error) {
-    console.error(`Quote failed for ${symbol}:`, error);
-    return null;
-  }
-}
-
-async function fetchFinnhubNews(category = "general") {
-  const res = await fetch(
-    `https://finnhub.io/api/v1/news?category=${encodeURIComponent(category)}&token=${FINNHUB_API_KEY}`
-  );
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
-
 function renderNewsItem(item) {
-  const title = escapeHtml(item.headline || "Untitled");
+  const title = escapeHtml(item.title || "Untitled");
   const source = escapeHtml(item.source || "Unknown source");
-  const summary = escapeHtml((item.summary || "").slice(0, 180));
+  const summary = escapeHtml((item.summary || "").slice(0, 200));
   const url = item.url || "#";
-  const time = item.datetime
-    ? new Date(item.datetime * 1000).toLocaleString()
-    : "Unknown time";
+  const time = item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown time";
 
   return `
     <div class="news-item">
@@ -380,7 +318,11 @@ function renderMarketMarkers(quotes) {
     AMD: [30.2672, -97.7431],
     NVDA: [37.3875, -122.0575],
     TSLA: [30.2672, -97.7431],
-    BTCUSD: [25.7617, -80.1918]
+    AAPL: [37.3349, -122.0090],
+    MSFT: [47.6426, -122.1393],
+    META: [37.4845, -122.1477],
+    AMZN: [47.6062, -122.3321],
+    GOOGL: [37.4220, -122.0841]
   };
 
   quotes.forEach((quote) => {
@@ -399,8 +341,8 @@ function renderMarketMarkers(quotes) {
     });
 
     marker.bindPopup(`
-      <strong>${quote.symbol}</strong><br>
-      Price: ${quote.price}<br>
+      <strong>${escapeHtml(quote.symbol)}</strong><br>
+      Price: ${formatPrice(quote.price)}<br>
       <span class="${cls}">
         ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
       </span>
@@ -419,13 +361,10 @@ function formatPrice(value) {
   });
 }
 
-function round2(value) {
-  return Math.round(Number(value) * 100) / 100;
-}
-
 function formatSigned(value) {
   const num = Number(value);
-  return num > 0 ? `+${num}` : `${num}`;
+  const rounded = Math.round(num * 100) / 100;
+  return rounded > 0 ? `+${rounded}` : `${rounded}`;
 }
 
 function escapeHtml(str) {
