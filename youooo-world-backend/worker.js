@@ -17,11 +17,13 @@ const JOB_KEYWORDS = [
 const AI_KEYWORDS = [
   "openai", "nvidia", "amd", "microsoft", "google", "meta",
   "artificial intelligence", "ai", "chip", "gpu", "inference",
-  "training", "datacenter", "cloud ai", "model", "llm", "foundation model"
+  "training", "datacenter", "cloud ai", "model", "llm", "foundation model",
+  "semiconductor", "accelerator", "deepseek", "anthropic"
 ];
 
 const AI_NEGATIVE_KEYWORDS = [
-  "automobile", "auto sales", "gas supply", "tourism", "election polling"
+  "automobile", "auto sales", "gas supply", "tourism", "election polling",
+  "sports", "travel", "real estate"
 ];
 
 export default {
@@ -103,11 +105,14 @@ async function getJobsSignals(env) {
 
   return data
     .map(normalizeNews)
-    .map((item) => ({
-      ...item,
-      score: keywordScore(`${item.title} ${item.summary}`, JOB_KEYWORDS),
-      type: "jobs"
-    }))
+    .map((item) => {
+      const text = `${item.title} ${item.summary}`;
+      return {
+        ...item,
+        score: keywordScore(text, JOB_KEYWORDS),
+        type: "jobs"
+      };
+    })
     .filter((item) => item.score >= 10)
     .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
     .slice(0, 10);
@@ -118,11 +123,14 @@ async function getAISignals(env) {
 
   return data
     .map(normalizeNews)
-    .map((item) => ({
-      ...item,
-      score: aiScore(`${item.title} ${item.summary}`),
-      type: "ai"
-    }))
+    .map((item) => {
+      const text = `${item.title} ${item.summary}`;
+      return {
+        ...item,
+        score: aiScore(text),
+        type: "ai"
+      };
+    })
     .filter((item) => item.score >= 12)
     .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
     .slice(0, 10);
@@ -138,10 +146,13 @@ async function getTopSignals(env) {
   const signals = [];
 
   for (const mover of movers.slice(0, 4)) {
-    const basePriority = Math.abs(mover.percentChange);
+    const moveAbs = Math.abs(Number(mover.percentChange || 0));
+    const score = Math.min(99, Math.round(60 + moveAbs * 8));
+
     signals.push({
       type: "market",
-      priority: 40 + basePriority,
+      score,
+      priority: 40 + moveAbs,
       title: `${mover.symbol} moved ${signed(mover.percentChange)}%`,
       summary: `Price ${mover.price} | Change ${signed(mover.change)} (${signed(mover.percentChange)}%)`,
       url: null,
@@ -153,6 +164,7 @@ async function getTopSignals(env) {
   for (const item of jobs.slice(0, 4)) {
     signals.push({
       type: "jobs",
+      score: Math.min(99, 58 + item.score),
       priority: 55 + item.score,
       title: item.title,
       summary: item.summary,
@@ -165,6 +177,7 @@ async function getTopSignals(env) {
   for (const item of ai.slice(0, 4)) {
     signals.push({
       type: "ai",
+      score: Math.min(99, 56 + item.score),
       priority: 52 + item.score,
       title: item.title,
       summary: item.summary,
@@ -244,6 +257,15 @@ function aiScore(text) {
   for (const word of AI_NEGATIVE_KEYWORDS) {
     if (haystack.includes(word)) score -= 10;
   }
+
+  if (haystack.includes("nvidia")) score += 8;
+  if (haystack.includes("amd")) score += 8;
+  if (haystack.includes("openai")) score += 10;
+  if (haystack.includes("gpu")) score += 6;
+  if (haystack.includes("chip")) score += 6;
+  if (haystack.includes("datacenter")) score += 5;
+  if (haystack.includes("cloud")) score += 4;
+  if (haystack.includes("model")) score += 4;
 
   return score;
 }

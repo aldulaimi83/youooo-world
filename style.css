@@ -295,7 +295,8 @@ body {
 
 .tag-row,
 .chips,
-.signal-filters {
+.signal-filters,
+.signal-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -471,6 +472,26 @@ body {
   color: var(--accent);
   background: rgba(16, 28, 45, 0.95);
   border-color: rgba(119, 182, 255, 0.22);
+}
+
+.signal-insight {
+  color: var(--accent);
+  font-size: 0.9rem;
+  margin: 8px 0 4px;
+}
+
+.signal-score-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #57ffd6, #77b6ff);
+  border-radius: 6px;
 }
 
 .signal-footer {

@@ -6,6 +6,7 @@ let marketMarkersLayer;
 let activeLayer = "earthquakes";
 let cachedSignals = [];
 let activeSignalFilter = "all";
+let actionableOnly = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
@@ -51,9 +52,15 @@ function setupSignalFilters() {
   const buttons = document.querySelectorAll(".filter-btn");
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      buttons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      activeSignalFilter = btn.dataset.filter;
+      if (btn.dataset.filter === "actionable") {
+        actionableOnly = !actionableOnly;
+        btn.classList.toggle("active", actionableOnly);
+      } else {
+        document.querySelectorAll('.filter-btn[data-filter]:not([data-filter="actionable"])')
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeSignalFilter = btn.dataset.filter;
+      }
       renderTopSignals();
     });
   });
@@ -291,11 +298,14 @@ async function loadSignalAlerts() {
         item.type === "ai" ? "🤖" : "🌍";
 
       const title = escapeHtml(item.title || "Alert");
-      const content = item.url
-        ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${title}</a>`
-        : title;
+      const insight = escapeHtml(buildInsight(item));
 
-      return `<div class="alert-item">${emoji} ${content}</div>`;
+      return `
+        <div class="alert-item">
+          <div>${emoji} ${title}</div>
+          <div class="item-meta">${insight}</div>
+        </div>
+      `;
     }).join("");
   } catch (error) {
     console.error("Signal alerts error:", error);
@@ -329,6 +339,10 @@ function renderTopSignals() {
     items = items.filter((item) => item.type === activeSignalFilter);
   }
 
+  if (actionableOnly) {
+    items = items.filter((item) => Number(item.score || 0) >= 75);
+  }
+
   items = items.slice(0, 8);
 
   if (!items.length) {
@@ -336,9 +350,9 @@ function renderTopSignals() {
     return;
   }
 
-  container.innerHTML = items.map((item, index) => {
+  container.innerHTML = items.map((item) => {
     const originalIndex = cachedSignals.indexOf(item);
-    const score = computeSignalScore(item);
+    const score = Number.isFinite(Number(item.score)) ? Number(item.score) : computeSignalScore(item);
     const severity = getSeverity(score);
     const typeLabel = item.type === "market"
       ? "Market"
@@ -349,6 +363,8 @@ function renderTopSignals() {
     const title = escapeHtml(item.title || "Untitled signal");
     const summary = escapeHtml((item.summary || "").slice(0, 140));
     const time = formatTimestamp(item.timestamp);
+    const tags = buildTags(item);
+    const insight = escapeHtml(buildInsight(item));
 
     return `
       <div class="top-signal-item" data-index="${originalIndex}">
@@ -363,6 +379,13 @@ function renderTopSignals() {
             <div class="item-meta">${summary}</div>
           </div>
           <div class="top-signal-score">Score ${score}</div>
+        </div>
+
+        <div class="signal-tags">${tags}</div>
+        <div class="signal-insight">${insight}</div>
+
+        <div class="signal-score-bar">
+          <div class="bar-fill" style="width:${Math.max(5, Math.min(100, score))}%"></div>
         </div>
 
         <div class="signal-footer">
@@ -410,7 +433,7 @@ function openSignalModal(signal) {
     return;
   }
 
-  const score = computeSignalScore(signal);
+  const score = Number.isFinite(Number(signal.score)) ? Number(signal.score) : computeSignalScore(signal);
   const confidenceLabel = score >= 85 ? "High" : score >= 70 ? "Medium" : "Watch";
   const insights = buildWhyItMatters(signal);
 
@@ -487,6 +510,7 @@ function pickWatchList(text, defaults) {
   if (text.includes("amazon")) matches.push("Watch AMZN for cost-control and hiring signals.");
   if (text.includes("meta")) matches.push("Watch META for AI capex and restructuring signals.");
   if (text.includes("oil")) matches.push("Watch energy names if geopolitical risk stays elevated.");
+  if (text.includes("tesla")) matches.push("Watch TSLA for sentiment continuation.");
 
   if (!matches.length) {
     return defaults.slice(0, 3).map((item) => `Watch ${item} for related movement.`);
@@ -506,7 +530,7 @@ function computeSignalScore(signal) {
   const importantWords = [
     "nvidia", "amd", "openai", "microsoft", "google", "meta",
     "layoff", "restructuring", "ai", "chip", "demand", "surge",
-    "guidance", "cloud", "gpu", "hiring"
+    "guidance", "cloud", "gpu", "hiring", "oil", "middle east"
   ];
 
   importantWords.forEach((word) => {
@@ -535,6 +559,58 @@ function getSeverity(score) {
     return { label: "Medium", className: "medium" };
   }
   return { label: "Watch", className: "watch" };
+}
+
+function buildTags(signal) {
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+  const tags = [];
+
+  if (text.includes("nvidia")) tags.push("NVDA");
+  if (text.includes("amd")) tags.push("AMD");
+  if (text.includes("tesla")) tags.push("TSLA");
+  if (text.includes("amazon")) tags.push("AMZN");
+  if (text.includes("microsoft")) tags.push("MSFT");
+  if (text.includes("google")) tags.push("GOOGL");
+  if (text.includes("meta")) tags.push("META");
+  if (text.includes("openai")) tags.push("OPENAI");
+
+  if (text.includes("ai") || text.includes("model") || text.includes("llm")) tags.push("AI");
+  if (text.includes("chip") || text.includes("gpu") || text.includes("semiconductor")) tags.push("SEMIS");
+  if (text.includes("oil") || text.includes("gas") || text.includes("energy")) tags.push("ENERGY");
+  if (text.includes("layoff") || text.includes("hiring") || text.includes("restructuring")) tags.push("JOBS");
+  if (text.includes("cloud") || text.includes("datacenter")) tags.push("CLOUD");
+
+  if (text.includes("middle east") || text.includes("iran") || text.includes("israel")) tags.push("M.E.");
+  if (text.includes("china")) tags.push("CHINA");
+  if (text.includes("united states") || text.includes("u.s.") || text.includes("usa")) tags.push("USA");
+
+  return [...new Set(tags)].map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+}
+
+function buildInsight(signal) {
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+
+  if (text.includes("nvidia") || text.includes("openai") || text.includes("gpu") || text.includes("model")) {
+    return "Bullish for AI infrastructure and semiconductor names.";
+  }
+
+  if (text.includes("amd")) {
+    return "Watch AMD and related compute names for follow-through.";
+  }
+
+  if (text.includes("layoff") || text.includes("restructuring") || text.includes("hiring freeze")) {
+    return "Bearish for tech employment sentiment; watch cost-cutting names.";
+  }
+
+  if (text.includes("oil") || text.includes("gas") || text.includes("middle east")) {
+    return "Watch energy, transport, and defense-related names.";
+  }
+
+  if (text.includes("tesla")) {
+    return "Watch TSLA and EV sentiment for continuation or reversal.";
+  }
+
+  return "Actionability is moderate; watch for confirmation from related sectors.";
 }
 
 async function loadEarthquakes() {
@@ -573,6 +649,7 @@ function renderNewsItem(item) {
   const summary = escapeHtml((item.summary || "").slice(0, 200));
   const url = item.url || "#";
   const time = formatTimestamp(item.timestamp);
+  const insight = escapeHtml(buildInsight(item));
 
   return `
     <div class="news-item">
@@ -581,6 +658,7 @@ function renderNewsItem(item) {
       </div>
       <div class="news-source">${source} • ${time}</div>
       <div class="item-meta">${summary}</div>
+      <div class="signal-insight">${insight}</div>
     </div>
   `;
 }
