@@ -2,146 +2,233 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YOUOOO World Intelligence</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
-  <title>Youooo World V8.3</title>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-logo">Y</div>
-      <div>
-        <h1>Youooo World</h1>
-        <p class="subtitle">V8.3 • TradingView Chart Edition</p>
-      </div>
-    </div>
-
-    <div class="topbar-actions">
-      <a class="top-link" href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
-        LinkedIn
-      </a>
-    </div>
-  </header>
-
-  <main class="page">
-    <section class="hero-card">
-      <div class="hero-left">
-        <h2>Global Market Intelligence</h2>
-        <p>
-          Search any stock or crypto symbol and view live market data with a real
-          TradingView chart.
-        </p>
-
-        <div class="search-row">
-          <input
-            id="symbolInput"
-            type="text"
-            placeholder="Search symbol or company, e.g. AAPL, AMD, TSLA, BTC/USD"
-            autocomplete="off"
-          />
-          <button id="searchBtn">Search</button>
-        </div>
-
-        <div id="suggestions" class="suggestions"></div>
-
-        <div class="quick-row">
-          <button class="quick-btn" data-symbol="AAPL">AAPL</button>
-          <button class="quick-btn" data-symbol="AMD">AMD</button>
-          <button class="quick-btn" data-symbol="TSLA">TSLA</button>
-          <button class="quick-btn" data-symbol="NVDA">NVDA</button>
-          <button class="quick-btn" data-symbol="MSFT">MSFT</button>
-          <button class="quick-btn" data-symbol="BTC/USD">BTC/USD</button>
-          <button class="quick-btn" data-symbol="ETH/USD">ETH/USD</button>
-        </div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand">YOUOOO</div>
+        <div class="subtitle">Top world, market, jobs, and AI signals</div>
       </div>
 
-      <div class="hero-right">
-        <div class="market-ticker">
-          <div class="ticker-track" id="tickerTrack">
-            <span>Loading market snapshot...</span>
+      <nav class="top-nav">
+        <a href="#topSignalsCard">Signals</a>
+        <a href="#marketsTab">Markets</a>
+        <a href="#jobsTab">Jobs</a>
+        <a href="#aiTab">AI</a>
+      </nav>
+
+      <div class="topbar-right">
+        <div class="status-pill online">STATUS: ONLINE</div>
+        <div class="status-pill live">MODE: LIVE</div>
+        <div class="status-pill" id="updatedAt">UPDATED: --</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="map-section">
+        <div id="map"></div>
+
+        <div class="floating-panel layers-panel">
+          <div class="panel-title-row">
+            <h3>TACTICAL LAYERS</h3>
+            <span class="mini-sep">—</span>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <section class="content-grid">
-      <section class="panel quote-panel">
-        <div class="panel-header">
-          <h3>Market Snapshot</h3>
-        </div>
+          <div class="layer-grid">
+            <button class="layer-btn active" data-layer="earthquakes">Earthquakes</button>
+            <button class="layer-btn" data-layer="markets">Market Impact</button>
+            <button class="layer-btn" data-layer="jobs">Jobs</button>
+            <button class="layer-btn" data-layer="ai">AI Alerts</button>
+          </div>
 
-        <div id="quoteCard" class="quote-card">
-          <div class="quote-empty">Search a symbol to load quote details.</div>
-        </div>
-      </section>
+          <div class="tag-row">
+            <span class="tag">Ukraine</span>
+            <span class="tag">Middle East</span>
+            <span class="tag">Semis</span>
+          </div>
 
-      <section class="panel chart-panel">
-        <div class="panel-header">
-          <h3>TradingView Chart</h3>
-          <button id="expandChartBtn" class="secondary-btn">Expand</button>
+          <p class="panel-note">
+            Track world events, company signals, and market reaction in one view.
+          </p>
         </div>
 
-        <div id="chartTitle" class="chart-title">No symbol selected</div>
-        <div id="tvChart" class="tv-chart"></div>
-      </section>
-    </section>
-
-    <section class="bottom-grid">
-      <section class="panel jobs-panel">
-        <div class="panel-header">
-          <h3>Market Jobs Corner</h3>
-        </div>
-        <div id="jobsBox" class="jobs-box">
-          <p>Quick links for finance and tech market jobs:</p>
-          <div class="job-links">
-            <a href="https://www.linkedin.com/jobs/" target="_blank" rel="noopener noreferrer">LinkedIn Jobs</a>
-            <a href="https://www.indeed.com/" target="_blank" rel="noopener noreferrer">Indeed</a>
-            <a href="https://www.levels.fyi/jobs/" target="_blank" rel="noopener noreferrer">Levels.fyi Jobs</a>
-            <a href="https://wellfound.com/jobs" target="_blank" rel="noopener noreferrer">Wellfound</a>
-            <a href="https://careers.microsoft.com/" target="_blank" rel="noopener noreferrer">Microsoft Careers</a>
-            <a href="https://www.nvidia.com/en-us/about-nvidia/careers/" target="_blank" rel="noopener noreferrer">NVIDIA Careers</a>
+        <div class="floating-panel alerts-panel">
+          <div class="panel-title-row">
+            <h3>LIVE ALERTS</h3>
+            <span class="mini-sep">—</span>
+          </div>
+          <div id="liveAlerts" class="alerts-list">
+            <div class="empty-state">Loading alerts...</div>
           </div>
         </div>
       </section>
 
-      <section class="panel news-panel">
-        <div class="panel-header">
-          <h3>Signal Notes</h3>
-        </div>
-        <div class="signal-box">
-          <p>
-            This version upgrades your chart experience using TradingView embed,
-            so users can interact with zoom, timeframe, indicators, and price action better.
-          </p>
-          <p>
-            Next high-value upgrades:
-          </p>
-          <ul>
-            <li>Email alerts for saved watchlists</li>
-            <li>Top movers scanner</li>
-            <li>Layoff / hiring radar</li>
-            <li>Premium dashboard with saved symbols</li>
-          </ul>
-        </div>
-      </section>
-    </section>
-  </main>
+      <aside class="side-panel">
+        <section id="topSignalsCard" class="card hero-card">
+          <div class="card-header-row">
+            <div>
+              <h2>Top Signals Now</h2>
+              <p class="card-subtitle">
+                Ranked signals with severity, category, and why they matter.
+              </p>
+            </div>
+            <div class="beta-badge">V3</div>
+          </div>
 
-  <div id="chartModal" class="modal hidden">
-    <div class="modal-overlay" id="modalOverlay"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="modalChartTitle">Expanded Chart</h3>
-        <button id="closeModalBtn" class="secondary-btn">Close</button>
+          <div class="signal-filters" id="signalFilters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="market">Markets</button>
+            <button class="filter-btn" data-filter="jobs">Jobs</button>
+            <button class="filter-btn" data-filter="ai">AI</button>
+          </div>
+
+          <div id="topSignalsList" class="top-signals-list">
+            <div class="empty-state">Loading top signals...</div>
+          </div>
+        </section>
+
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="marketsTab">Markets</button>
+          <button class="tab-btn" data-tab="jobsTab">Jobs</button>
+          <button class="tab-btn" data-tab="aiTab">AI</button>
+        </nav>
+
+        <section id="marketsTab" class="tab-content active">
+          <div class="card">
+            <h2>Market Snapshot</h2>
+            <p class="card-subtitle">
+              Watch price action, movers, and headlines tied to market sentiment.
+            </p>
+
+            <h3>Top Watchlist</h3>
+            <div id="watchlistGrid" class="watchlist-grid">
+              <div class="empty-state">Loading watchlist...</div>
+            </div>
+
+            <h3>Market Movers</h3>
+            <div id="marketMovers" class="list-block">
+              <div class="empty-state">Loading movers...</div>
+            </div>
+
+            <h3>World + Market Feed</h3>
+            <div id="marketNews" class="news-feed">
+              <div class="empty-state">Loading market news...</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="jobsTab" class="tab-content">
+          <div class="card">
+            <div class="section-headline-row">
+              <h2>Layoff Radar</h2>
+              <span class="trend-pill danger">Trend: Negative</span>
+            </div>
+            <p class="card-subtitle">
+              Hiring slowdowns, layoffs, restructuring, and workforce signals.
+            </p>
+
+            <div class="chips">
+              <span class="chip">Google</span>
+              <span class="chip">Microsoft</span>
+              <span class="chip">Meta</span>
+              <span class="chip">Amazon</span>
+              <span class="chip">AMD</span>
+              <span class="chip">Intel</span>
+            </div>
+
+            <h3>Jobs Intelligence</h3>
+            <div id="jobsFeed" class="news-feed">
+              <div class="empty-state">Loading jobs intelligence...</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="aiTab" class="tab-content">
+          <div class="card">
+            <div class="section-headline-row">
+              <h2>AI Intelligence</h2>
+              <span class="trend-pill success">Trend: Strong Growth</span>
+            </div>
+            <p class="card-subtitle">
+              AI launches, chip demand, cloud competition, and infrastructure signals.
+            </p>
+
+            <div class="chips">
+              <span class="chip">OpenAI</span>
+              <span class="chip">NVIDIA</span>
+              <span class="chip">AMD</span>
+              <span class="chip">Microsoft</span>
+              <span class="chip">Google</span>
+              <span class="chip">Meta</span>
+            </div>
+
+            <h3>AI Signals</h3>
+            <div id="aiFeed" class="news-feed">
+              <div class="empty-state">Loading AI alerts...</div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="site-footer">
+          <span>Built by Ahmed Aldulaimi</span>
+          <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </footer>
+      </aside>
+    </main>
+  </div>
+
+  <div id="signalModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="closeModalBtn" aria-label="Close">×</button>
+
+      <div class="modal-kicker">WHY IT MATTERS</div>
+      <h2 id="modalTitle">Signal Details</h2>
+      <div class="modal-meta" id="modalMeta">Loading...</div>
+
+      <div class="modal-section">
+        <h3>What happened</h3>
+        <p id="modalSummary">—</p>
       </div>
-      <div id="tvChartModal" class="tv-chart modal-chart"></div>
+
+      <div class="modal-section">
+        <h3>Impact</h3>
+        <ul id="modalImpactList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Watch</h3>
+        <ul id="modalWatchList" class="modal-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Confidence</h3>
+        <div id="modalConfidence" class="confidence-badge">Medium</div>
+      </div>
+
+      <div class="modal-actions">
+        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-link">Open source</a>
+      </div>
     </div>
   </div>
 
-  <script src="https://s3.tradingview.com/tv.js"></script>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
   <script src="script.js"></script>
 </body>
 </html>

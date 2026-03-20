@@ -1,297 +1,682 @@
 const API_BASE = "https://youooo-world-api.youooo.workers.dev";
 
-const symbolInput = document.getElementById("symbolInput");
-const searchBtn = document.getElementById("searchBtn");
-const suggestions = document.getElementById("suggestions");
-const quoteCard = document.getElementById("quoteCard");
-const tickerTrack = document.getElementById("tickerTrack");
-const chartTitle = document.getElementById("chartTitle");
-const expandChartBtn = document.getElementById("expandChartBtn");
-const chartModal = document.getElementById("chartModal");
-const modalOverlay = document.getElementById("modalOverlay");
-const closeModalBtn = document.getElementById("closeModalBtn");
-const modalChartTitle = document.getElementById("modalChartTitle");
+let map;
+let earthquakeLayer;
+let marketMarkersLayer;
+let activeLayer = "earthquakes";
+let cachedSignals = [];
+let activeSignalFilter = "all";
 
-let currentSymbol = "AAPL";
-let currentExchange = "NASDAQ";
-let searchDebounce = null;
+document.addEventListener("DOMContentLoaded", async () => {
+  setupTabs();
+  setupLayerButtons();
+  setupSignalFilters();
+  setupModal();
+  initMap();
+  await loadAllData();
+  setInterval(loadAllData, 5 * 60 * 1000);
+});
 
-function formatNumber(value) {
-  if (value === null || value === undefined || value === "") return "—";
-  const num = Number(value);
-  if (Number.isNaN(num)) return value;
-  return num.toLocaleString();
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
 }
 
-function formatPrice(value) {
-  if (value === null || value === undefined || value === "") return "—";
-  const num = Number(value);
-  if (Number.isNaN(num)) return value;
-  return num.toLocaleString(undefined, {
-    minimumFractionDigits: num < 1 ? 4 : 2,
-    maximumFractionDigits: num < 1 ? 4 : 2
-  });
-}
+function setupTabs() {
+  const buttons = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
 
-function percentClass(value) {
-  return Number(value) >= 0 ? "up" : "down";
-}
-
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
-  return await res.json();
-}
-
-function getTradingViewSymbol(symbol, exchange) {
-  const upper = (symbol || "").toUpperCase().trim();
-  const ex = (exchange || "").toUpperCase().trim();
-
-  if (upper.includes("/")) {
-    const clean = upper.replace("/", "");
-    return `BINANCE:${clean}`;
-  }
-
-  if (upper === "BTCUSD" || upper === "BTC/USD") return "BINANCE:BTCUSDT";
-  if (upper === "ETHUSD" || upper === "ETH/USD") return "BINANCE:ETHUSDT";
-  if (upper === "SOLUSD" || upper === "SOL/USD") return "BINANCE:SOLUSDT";
-
-  const exchangeMap = {
-    NASDAQ: "NASDAQ",
-    NYSE: "NYSE",
-    AMEX: "AMEX",
-    TSX: "TSX",
-    LSE: "LSE"
-  };
-
-  const tvExchange = exchangeMap[ex] || "NASDAQ";
-  return `${tvExchange}:${upper}`;
-}
-
-function loadTradingViewChart(containerId, symbol, exchange = "NASDAQ", interval = "60") {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-
-  el.innerHTML = "";
-
-  const tvSymbol = getTradingViewSymbol(symbol, exchange);
-
-  new TradingView.widget({
-    autosize: true,
-    symbol: tvSymbol,
-    interval,
-    timezone: "America/Chicago",
-    theme: "dark",
-    style: "1",
-    locale: "en",
-    enable_publishing: false,
-    allow_symbol_change: true,
-    hide_top_toolbar: false,
-    hide_legend: false,
-    save_image: true,
-    container_id: containerId
-  });
-}
-
-function renderQuoteCard(data, companyName = "") {
-  const price = data.close ?? data.price ?? data.last ?? null;
-  const change = data.change ?? 0;
-  const percentChange = data.percent_change ?? data.percent ?? 0;
-  const open = data.open ?? null;
-  const high = data.high ?? null;
-  const low = data.low ?? null;
-  const prevClose = data.previous_close ?? null;
-  const volume = data.volume ?? null;
-
-  quoteCard.innerHTML = `
-    <div class="quote-symbol">${data.symbol || currentSymbol}</div>
-    <div class="quote-name">${companyName || "Market Instrument"}</div>
-    <div class="quote-price">$${formatPrice(price)}</div>
-    <div class="quote-change ${percentClass(change)}">
-      ${Number(change) >= 0 ? "+" : ""}${formatPrice(change)}
-      (${Number(percentChange) >= 0 ? "+" : ""}${formatPrice(percentChange)}%)
-    </div>
-
-    <div class="quote-grid">
-      <div class="metric">
-        <div class="metric-label">Open</div>
-        <div class="metric-value">$${formatPrice(open)}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Previous Close</div>
-        <div class="metric-value">$${formatPrice(prevClose)}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Day High</div>
-        <div class="metric-value">$${formatPrice(high)}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Day Low</div>
-        <div class="metric-value">$${formatPrice(low)}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Volume</div>
-        <div class="metric-value">${formatNumber(volume)}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Exchange</div>
-        <div class="metric-value">${currentExchange || "—"}</div>
-      </div>
-    </div>
-  `;
-}
-
-async function loadQuote(symbol, companyName = "", exchange = "NASDAQ") {
-  quoteCard.innerHTML = `<div class="loading">Loading quote...</div>`;
-  chartTitle.textContent = `${symbol} • ${exchange}`;
-  modalChartTitle.textContent = `${symbol} • Expanded TradingView Chart`;
-
-  try {
-    const data = await fetchJson(`${API_BASE}/quote?symbol=${encodeURIComponent(symbol)}`);
-    currentSymbol = symbol;
-    currentExchange = exchange || "NASDAQ";
-
-    renderQuoteCard(data, companyName);
-    loadTradingViewChart("tvChart", currentSymbol, currentExchange, "60");
-
-    if (!chartModal.classList.contains("hidden")) {
-      loadTradingViewChart("tvChartModal", currentSymbol, currentExchange, "60");
-    }
-  } catch (error) {
-    quoteCard.innerHTML = `<div class="error">Failed to load quote for ${symbol}.</div>`;
-    console.error(error);
-  }
-}
-
-function renderSuggestions(items) {
-  if (!items || !items.length) {
-    suggestions.innerHTML = "";
-    return;
-  }
-
-  suggestions.innerHTML = items.slice(0, 8).map(item => {
-    const symbol = item.symbol || "";
-    const name = item.instrument_name || item.name || "";
-    const exchange = item.exchange || "NASDAQ";
-    const country = item.country || "";
-    const type = item.instrument_type || item.type || "";
-
-    return `
-      <div
-        class="suggestion-item"
-        data-symbol="${symbol}"
-        data-name="${(name || "").replace(/"/g, "&quot;")}"
-        data-exchange="${exchange}"
-      >
-        <div class="suggestion-main">${symbol} • ${name}</div>
-        <div class="suggestion-sub">${exchange} ${country ? "• " + country : ""} ${type ? "• " + type : ""}</div>
-      </div>
-    `;
-  }).join("");
-
-  document.querySelectorAll(".suggestion-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const symbol = item.dataset.symbol;
-      const name = item.dataset.name;
-      const exchange = item.dataset.exchange || "NASDAQ";
-      symbolInput.value = symbol;
-      suggestions.innerHTML = "";
-      loadQuote(symbol, name, exchange);
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      contents.forEach((c) => c.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
     });
   });
 }
 
-async function searchSymbols(query) {
-  if (!query || query.trim().length < 1) {
-    suggestions.innerHTML = "";
+function setupLayerButtons() {
+  const buttons = document.querySelectorAll(".layer-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeLayer = btn.dataset.layer;
+      toggleLayers();
+    });
+  });
+}
+
+function setupSignalFilters() {
+  const buttons = document.querySelectorAll(".filter-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeSignalFilter = btn.dataset.filter;
+      renderTopSignals();
+    });
+  });
+}
+
+function setupModal() {
+  const closeBtn = document.getElementById("closeModalBtn");
+  const backdrop = document.getElementById("modalBackdrop");
+
+  if (closeBtn) closeBtn.addEventListener("click", closeSignalModal);
+  if (backdrop) backdrop.addEventListener("click", closeSignalModal);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeSignalModal();
+  });
+}
+
+function initMap() {
+  map = L.map("map", {
+    zoomControl: true,
+    worldCopyJump: true
+  }).setView([22, 10], 2.2);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap &copy; CARTO",
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+
+  earthquakeLayer = L.layerGroup().addTo(map);
+  marketMarkersLayer = L.layerGroup();
+}
+
+function toggleLayers() {
+  if (activeLayer === "earthquakes") {
+    if (!map.hasLayer(earthquakeLayer)) map.addLayer(earthquakeLayer);
+    if (map.hasLayer(marketMarkersLayer)) map.removeLayer(marketMarkersLayer);
+  } else if (activeLayer === "markets") {
+    if (!map.hasLayer(marketMarkersLayer)) map.addLayer(marketMarkersLayer);
+    if (map.hasLayer(earthquakeLayer)) map.removeLayer(earthquakeLayer);
+  } else {
+    if (!map.hasLayer(earthquakeLayer)) map.addLayer(earthquakeLayer);
+    if (map.hasLayer(marketMarkersLayer)) map.removeLayer(marketMarkersLayer);
+  }
+}
+
+async function loadAllData() {
+  setUpdatedTime();
+
+  await Promise.allSettled([
+    loadWatchlist(),
+    loadMarketMovers(),
+    loadEarthquakes(),
+    loadMarketNews(),
+    loadJobsFeed(),
+    loadAIFeed(),
+    loadSignalAlerts(),
+    loadTopSignals()
+  ]);
+}
+
+function setUpdatedTime() {
+  const now = new Date();
+  const el = document.getElementById("updatedAt");
+  if (el) el.textContent = `UPDATED: ${now.toLocaleString()}`;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+async function loadWatchlist() {
+  const container = document.getElementById("watchlistGrid");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading watchlist...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/watchlist"));
+    const quotes = payload.data || [];
+
+    if (!quotes.length) {
+      container.innerHTML = `<div class="empty-state">No watchlist data found.</div>`;
+      return;
+    }
+
+    container.innerHTML = quotes.map((quote) => {
+      const changeClass =
+        Number(quote.percentChange) > 0 ? "positive" :
+        Number(quote.percentChange) < 0 ? "negative" : "neutral";
+
+      return `
+        <div class="quote-card">
+          <div class="symbol">${escapeHtml(quote.symbol)}</div>
+          <div class="price">${formatPrice(quote.price)}</div>
+          <div class="change ${changeClass}">
+            ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
+          </div>
+          <div class="item-meta">Prev close: ${formatPrice(quote.prevClose)}</div>
+        </div>
+      `;
+    }).join("");
+
+    renderMarketMarkers(quotes);
+  } catch (error) {
+    console.error("Watchlist error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load watchlist.</div>`;
+  }
+}
+
+async function loadMarketMovers() {
+  const container = document.getElementById("marketMovers");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading movers...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/movers"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No movers found.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map((item) => {
+      const cls =
+        Number(item.percentChange) > 0 ? "positive" :
+        Number(item.percentChange) < 0 ? "negative" : "neutral";
+
+      return `
+        <div class="list-item">
+          <div class="item-title">${escapeHtml(item.symbol)} — ${formatPrice(item.price)}</div>
+          <div class="item-meta ${cls}">
+            ${formatSigned(item.change)} (${formatSigned(item.percentChange)}%)
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (error) {
+    console.error("Movers error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load movers.</div>`;
+  }
+}
+
+async function loadMarketNews() {
+  const container = document.getElementById("marketNews");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading market news...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/news?category=general"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No market news found.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.slice(0, 8).map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("Market news error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load market news.</div>`;
+  }
+}
+
+async function loadJobsFeed() {
+  const container = document.getElementById("jobsFeed");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading jobs intelligence...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/jobs"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No jobs signals found right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("Jobs feed error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load jobs intelligence.</div>`;
+  }
+}
+
+async function loadAIFeed() {
+  const container = document.getElementById("aiFeed");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading AI alerts...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/ai"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No AI alerts found right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(renderNewsItem).join("");
+  } catch (error) {
+    console.error("AI feed error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load AI alerts.</div>`;
+  }
+}
+
+async function loadSignalAlerts() {
+  const container = document.getElementById("liveAlerts");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading alerts...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/signals"));
+    const items = payload.data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state">No alerts available right now.</div>`;
+      return;
+    }
+
+    container.innerHTML = items.slice(0, 8).map((item) => {
+      const emoji =
+        item.type === "market" ? "📈" :
+        item.type === "jobs" ? "💼" :
+        item.type === "ai" ? "🤖" : "🌍";
+
+      const title = escapeHtml(item.title || "Alert");
+      const content = item.url
+        ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${title}</a>`
+        : title;
+
+      return `<div class="alert-item">${emoji} ${content}</div>`;
+    }).join("");
+  } catch (error) {
+    console.error("Signal alerts error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load alerts.</div>`;
+  }
+}
+
+async function loadTopSignals() {
+  const container = document.getElementById("topSignalsList");
+  if (!container) return;
+
+  container.innerHTML = `<div class="empty-state">Loading top signals...</div>`;
+
+  try {
+    const payload = await fetchJson(apiUrl("/api/signals"));
+    cachedSignals = payload.data || [];
+    renderTopSignals();
+  } catch (error) {
+    console.error("Top signals error:", error);
+    container.innerHTML = `<div class="empty-state">Failed to load top signals.</div>`;
+  }
+}
+
+function renderTopSignals() {
+  const container = document.getElementById("topSignalsList");
+  if (!container) return;
+
+  let items = [...cachedSignals];
+
+  if (activeSignalFilter !== "all") {
+    items = items.filter((item) => item.type === activeSignalFilter);
+  }
+
+  items = items.slice(0, 8);
+
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-state">No signals for this filter.</div>`;
     return;
   }
 
-  try {
-    const data = await fetchJson(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
-    renderSuggestions(data.data || data.results || []);
-  } catch (error) {
-    suggestions.innerHTML = "";
-    console.error(error);
-  }
+  container.innerHTML = items.map((item, index) => {
+    const originalIndex = cachedSignals.indexOf(item);
+    const score = computeSignalScore(item);
+    const severity = getSeverity(score);
+    const typeLabel = item.type === "market"
+      ? "Market"
+      : item.type === "jobs"
+      ? "Jobs"
+      : "AI";
+
+    const title = escapeHtml(item.title || "Untitled signal");
+    const summary = escapeHtml((item.summary || "").slice(0, 140));
+    const time = formatTimestamp(item.timestamp);
+
+    return `
+      <div class="top-signal-item" data-index="${originalIndex}">
+        <div class="signal-row-badges">
+          <div class="signal-type ${escapeHtml(item.type || "market")}">${typeLabel}</div>
+          <div class="severity-badge ${severity.className}">${severity.label}</div>
+        </div>
+
+        <div class="top-signal-head">
+          <div>
+            <div class="top-signal-title">${title}</div>
+            <div class="item-meta">${summary}</div>
+          </div>
+          <div class="top-signal-score">Score ${score}</div>
+        </div>
+
+        <div class="signal-footer">
+          <div class="news-source">${time}</div>
+          <a href="#" class="why-link" data-index="${originalIndex}">Why it matters</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  attachTopSignalEvents();
 }
 
-async function loadTickerBar() {
-  const watch = ["AAPL", "AMD", "NVDA", "TSLA", "MSFT", "SPY"];
-  const parts = [];
-
-  for (const symbol of watch) {
-    try {
-      const q = await fetchJson(`${API_BASE}/quote?symbol=${encodeURIComponent(symbol)}`);
-      const pct = Number(q.percent_change || 0);
-      const sign = pct >= 0 ? "+" : "";
-      parts.push(`${symbol}: $${formatPrice(q.close)} (${sign}${formatPrice(pct)}%)`);
-    } catch (e) {
-      parts.push(`${symbol}: unavailable`);
-    }
-  }
-
-  tickerTrack.innerHTML = `<span>${parts.join(" • ")} • BTC/USD available • ETH/USD available</span>`;
-}
-
-function runManualSearch() {
-  const value = symbolInput.value.trim();
-  if (!value) return;
-  loadQuote(value.toUpperCase(), value.toUpperCase(), "NASDAQ");
-  searchSymbols(value);
-}
-
-symbolInput.addEventListener("input", () => {
-  clearTimeout(searchDebounce);
-  const value = symbolInput.value.trim();
-
-  searchDebounce = setTimeout(() => {
-    if (value.length >= 1) {
-      searchSymbols(value);
-    } else {
-      suggestions.innerHTML = "";
-    }
-  }, 300);
-});
-
-symbolInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    runManualSearch();
-  }
-});
-
-searchBtn.addEventListener("click", runManualSearch);
-
-document.querySelectorAll(".quick-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const symbol = btn.dataset.symbol;
-    symbolInput.value = symbol;
-    suggestions.innerHTML = "";
-    loadQuote(symbol, symbol, symbol.includes("/") ? "CRYPTO" : "NASDAQ");
+function attachTopSignalEvents() {
+  document.querySelectorAll(".top-signal-item").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      const index = Number(event.currentTarget.dataset.index);
+      openSignalModal(cachedSignals[index]);
+    });
   });
-});
 
-expandChartBtn.addEventListener("click", () => {
-  chartModal.classList.remove("hidden");
-  modalChartTitle.textContent = `${currentSymbol} • Expanded TradingView Chart`;
-  setTimeout(() => {
-    loadTradingViewChart("tvChartModal", currentSymbol, currentExchange, "60");
-  }, 50);
-});
+  document.querySelectorAll(".why-link").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = Number(event.currentTarget.dataset.index);
+      openSignalModal(cachedSignals[index]);
+    });
+  });
+}
 
-closeModalBtn.addEventListener("click", () => {
-  chartModal.classList.add("hidden");
-  document.getElementById("tvChartModal").innerHTML = "";
-});
+function openSignalModal(signal) {
+  if (!signal) return;
 
-modalOverlay.addEventListener("click", () => {
-  chartModal.classList.add("hidden");
-  document.getElementById("tvChartModal").innerHTML = "";
-});
+  const modal = document.getElementById("signalModal");
+  const title = document.getElementById("modalTitle");
+  const meta = document.getElementById("modalMeta");
+  const summary = document.getElementById("modalSummary");
+  const impactList = document.getElementById("modalImpactList");
+  const watchList = document.getElementById("modalWatchList");
+  const confidence = document.getElementById("modalConfidence");
+  const sourceLink = document.getElementById("modalSourceLink");
 
-window.addEventListener("load", async () => {
-  await loadTickerBar();
-  await loadQuote("AAPL", "Apple Inc.", "NASDAQ");
-});
+  if (!modal || !title || !meta || !summary || !impactList || !watchList || !confidence || !sourceLink) {
+    return;
+  }
+
+  const score = computeSignalScore(signal);
+  const confidenceLabel = score >= 85 ? "High" : score >= 70 ? "Medium" : "Watch";
+  const insights = buildWhyItMatters(signal);
+
+  title.textContent = signal.title || "Signal Details";
+  meta.textContent = `${formatSignalType(signal.type)} • Score ${score}`;
+  summary.textContent = signal.summary || "No summary available.";
+
+  impactList.innerHTML = insights.impact.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  watchList.innerHTML = insights.watch.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  confidence.textContent = confidenceLabel;
+
+  if (signal.url) {
+    sourceLink.href = signal.url;
+    sourceLink.style.display = "inline-flex";
+  } else {
+    sourceLink.href = "#";
+    sourceLink.style.display = "none";
+  }
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeSignalModal() {
+  const modal = document.getElementById("signalModal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function buildWhyItMatters(signal) {
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+
+  if (signal.type === "market") {
+    return {
+      impact: [
+        "Large market moves often signal changing risk sentiment or reaction to fresh news.",
+        "Semiconductors, indexes, and momentum names can move together when leadership changes.",
+        "Watch for continuation or reversal in the next session."
+      ],
+      watch: pickWatchList(text, ["AMD", "NVDA", "QQQ", "SPY", "TSLA", "AAPL"])
+    };
+  }
+
+  if (signal.type === "jobs") {
+    return {
+      impact: [
+        "Workforce cuts can signal slowing growth, cost pressure, or margin defense.",
+        "Hiring slowdowns often affect broader tech sentiment.",
+        "Repeated restructuring headlines usually matter more than a single headline."
+      ],
+      watch: pickWatchList(text, ["AMZN", "GOOGL", "META", "MSFT", "INTC", "AMD"])
+    };
+  }
+
+  return {
+    impact: [
+      "AI headlines can move semiconductors, cloud names, and infrastructure suppliers.",
+      "Model launches and GPU demand often support the broader AI trade.",
+      "Chip, datacenter, and cloud spending frequently move together."
+    ],
+    watch: pickWatchList(text, ["NVDA", "AMD", "MSFT", "GOOGL", "META", "SMH"])
+  };
+}
+
+function pickWatchList(text, defaults) {
+  const matches = [];
+
+  if (text.includes("nvidia")) matches.push("Watch NVDA for semiconductor momentum.");
+  if (text.includes("amd")) matches.push("Watch AMD for AI and compute spillover.");
+  if (text.includes("microsoft")) matches.push("Watch MSFT for cloud and AI integration.");
+  if (text.includes("google")) matches.push("Watch GOOGL for AI platform response.");
+  if (text.includes("amazon")) matches.push("Watch AMZN for cost-control and hiring signals.");
+  if (text.includes("meta")) matches.push("Watch META for AI capex and restructuring signals.");
+  if (text.includes("oil")) matches.push("Watch energy names if geopolitical risk stays elevated.");
+
+  if (!matches.length) {
+    return defaults.slice(0, 3).map((item) => `Watch ${item} for related movement.`);
+  }
+
+  return matches.slice(0, 4);
+}
+
+function computeSignalScore(signal) {
+  let score = 60;
+  const text = `${signal.title || ""} ${signal.summary || ""}`.toLowerCase();
+
+  if (signal.type === "market") score += 10;
+  if (signal.type === "jobs") score += 12;
+  if (signal.type === "ai") score += 14;
+
+  const importantWords = [
+    "nvidia", "amd", "openai", "microsoft", "google", "meta",
+    "layoff", "restructuring", "ai", "chip", "demand", "surge",
+    "guidance", "cloud", "gpu", "hiring"
+  ];
+
+  importantWords.forEach((word) => {
+    if (text.includes(word)) score += 2;
+  });
+
+  let ageHours = 12;
+  if (signal.timestamp) {
+    const ts = normalizeTimestamp(signal.timestamp);
+    if (ts !== null) {
+      ageHours = Math.max(0, (Date.now() - ts) / (1000 * 60 * 60));
+    }
+  }
+
+  if (ageHours < 6) score += 8;
+  else if (ageHours < 24) score += 4;
+
+  return Math.min(99, Math.round(score));
+}
+
+function getSeverity(score) {
+  if (score >= 85) {
+    return { label: "High", className: "high" };
+  }
+  if (score >= 72) {
+    return { label: "Medium", className: "medium" };
+  }
+  return { label: "Watch", className: "watch" };
+}
+
+async function loadEarthquakes() {
+  try {
+    const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
+    const data = await res.json();
+
+    earthquakeLayer.clearLayers();
+
+    data.features.slice(0, 40).forEach((feature) => {
+      const [lng, lat, depth] = feature.geometry.coordinates;
+      const mag = feature.properties.mag ?? 0;
+      const place = feature.properties.place || "Unknown location";
+
+      L.circleMarker([lat, lng], {
+        radius: Math.max(4, mag * 2),
+        weight: 1,
+        opacity: 0.9,
+        fillOpacity: 0.5
+      })
+        .bindPopup(`
+          <strong>${escapeHtml(place)}</strong><br>
+          Magnitude: ${mag}<br>
+          Depth: ${depth} km
+        `)
+        .addTo(earthquakeLayer);
+    });
+  } catch (error) {
+    console.error("Earthquake layer failed:", error);
+  }
+}
+
+function renderNewsItem(item) {
+  const title = escapeHtml(item.title || "Untitled");
+  const source = escapeHtml(item.source || "Unknown source");
+  const summary = escapeHtml((item.summary || "").slice(0, 200));
+  const url = item.url || "#";
+  const time = formatTimestamp(item.timestamp);
+
+  return `
+    <div class="news-item">
+      <div class="news-title">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>
+      </div>
+      <div class="news-source">${source} • ${time}</div>
+      <div class="item-meta">${summary}</div>
+    </div>
+  `;
+}
+
+function renderMarketMarkers(quotes) {
+  marketMarkersLayer.clearLayers();
+
+  const positions = {
+    SPY: [40.7128, -74.0060],
+    QQQ: [40.7128, -74.0060],
+    AMD: [30.2672, -97.7431],
+    NVDA: [37.3875, -122.0575],
+    TSLA: [30.2672, -97.7431],
+    AAPL: [37.3349, -122.0090],
+    MSFT: [47.6426, -122.1393],
+    META: [37.4845, -122.1477],
+    AMZN: [47.6062, -122.3321],
+    GOOGL: [37.4220, -122.0841]
+  };
+
+  quotes.forEach((quote) => {
+    const pos = positions[quote.symbol];
+    if (!pos) return;
+
+    const isPositive = Number(quote.percentChange) >= 0;
+    const fillColor = isPositive ? "#6dff98" : "#ff6b7d";
+
+    const marker = L.circleMarker(pos, {
+      radius: 10,
+      weight: 1,
+      opacity: 0.95,
+      fillOpacity: 0.75,
+      color: fillColor,
+      fillColor
+    });
+
+    marker.bindPopup(`
+      <strong>${escapeHtml(quote.symbol)}</strong><br>
+      Price: ${formatPrice(quote.price)}<br>
+      ${formatSigned(quote.change)} (${formatSigned(quote.percentChange)}%)
+    `);
+
+    marker.addTo(marketMarkersLayer);
+  });
+
+  toggleLayers();
+}
+
+function normalizeTimestamp(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && value.trim() !== "") {
+      return numeric;
+    }
+
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function formatTimestamp(value) {
+  const ts = normalizeTimestamp(value);
+  if (ts === null) return "Unknown time";
+  return new Date(ts).toLocaleString();
+}
+
+function formatSignalType(type) {
+  if (type === "jobs") return "Jobs";
+  if (type === "ai") return "AI";
+  return "Market";
+}
+
+function formatPrice(value) {
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatSigned(value) {
+  const num = Number(value);
+  const rounded = Math.round(num * 100) / 100;
+  return rounded > 0 ? `+${rounded}` : `${rounded}`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
