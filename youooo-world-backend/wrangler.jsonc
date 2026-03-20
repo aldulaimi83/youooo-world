@@ -1,8 +1,12 @@
 {
   "name": "youooo-world-api",
   "main": "worker.js",
-  "compatibility_date": "2026-03-19",
-  "observability": {
-    "enabled": true
-  }
+  "compatibility_date": "2026-03-20",
+  "kv_namespaces": [
+    {
+      "binding": "ALERTS_KV",
+      "id": "9bff93e95f47473e8c76a4a8d7692a63",
+      "preview_id": "7ff5fa2d5cb34838b056e7955366f2ef"
+    }
+  ]
 }
