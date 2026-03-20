@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 youooo-world-backend/.wrangler/
 node_modules/
 .DS_Store
+.wrangler/
