@@ -6,27 +6,27 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
-  <title>Youooo World V8</title>
+  <title>Youooo World V8.2</title>
   <meta
     name="description"
-    content="Youooo World V8 - market intelligence, risk tracking, jobs, and alerts."
+    content="Youooo World V8.2 — premium market, risk, jobs, and alerts dashboard."
   />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-wrap">
-        <a class="brand" href="#home">
-          <span class="brand-globe">🌍</span>
-          <span class="brand-text">
-            <strong>Youooo World</strong>
-            <small>V8 Intelligence Dashboard</small>
-          </span>
-        </a>
-      </div>
+  <div class="page-bg"></div>
 
-      <div class="topbar-actions">
+  <div class="app-shell">
+    <header class="topbar glass">
+      <a class="brand" href="#home">
+        <div class="brand-icon">🌍</div>
+        <div class="brand-copy">
+          <strong>Youooo World</strong>
+          <span>V8.2 Intelligence Dashboard</span>
+        </div>
+      </a>
+
+      <div class="topbar-right">
         <div class="search-wrap">
           <input
             id="globalSearch"
@@ -36,7 +36,7 @@
           />
           <div id="searchResults" class="search-results hidden"></div>
         </div>
-        <button id="themeToggle" class="btn btn-secondary" type="button">Theme</button>
+        <button id="themeToggle" class="btn btn-ghost" type="button">Theme</button>
       </div>
     </header>
 
@@ -49,15 +49,17 @@
     </nav>
 
     <main class="main-content">
+      <!-- HOME -->
       <section id="homeTab" class="tab-panel active">
-        <div class="hero-card card">
-          <div class="hero-left">
-            <p class="eyebrow">Global intelligence for markets and careers</p>
+        <section class="hero">
+          <div class="hero-main">
+            <p class="eyebrow">GLOBAL INTELLIGENCE FOR MARKETS AND CAREERS</p>
             <h1>Track stocks, risk, and job opportunities in one place.</h1>
             <p class="hero-text">
-              Youooo World V8 combines live stock snapshots, AI-style risk scoring,
-              global jobs links, and alert foundations into one dashboard.
+              A cleaner, smarter dashboard for live quotes, AI-style risk scoring,
+              global job discovery, and alerts.
             </p>
+
             <div class="hero-actions">
               <button id="heroLoadBtn" class="btn btn-primary" type="button">
                 Load Market Snapshot
@@ -67,188 +69,169 @@
               </button>
             </div>
           </div>
-          <div class="hero-right">
-            <div class="mini-grid">
-              <div class="mini-stat">
-                <span>Tracked Symbol</span>
-                <strong id="heroSymbol">NVDA</strong>
-              </div>
-              <div class="mini-stat">
-                <span>Last Price</span>
-                <strong id="heroPrice">--</strong>
-              </div>
-              <div class="mini-stat">
-                <span>Daily Move</span>
-                <strong id="heroChange">--</strong>
-              </div>
-              <div class="mini-stat">
-                <span>Risk Score</span>
-                <strong id="heroRisk">--</strong>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="dashboard-grid">
-          <article class="card">
-            <div class="card-header">
+          <aside class="hero-stats">
+            <div class="stat-card soft-card">
+              <span>Tracked Symbol</span>
+              <strong id="heroSymbol">NVDA</strong>
+            </div>
+            <div class="stat-card soft-card">
+              <span>Last Price</span>
+              <strong id="heroPrice">--</strong>
+            </div>
+            <div class="stat-card soft-card">
+              <span>Daily Move</span>
+              <strong id="heroChange">--</strong>
+            </div>
+            <div class="stat-card soft-card">
+              <span>Risk Score</span>
+              <strong id="heroRisk">--</strong>
+            </div>
+          </aside>
+        </section>
+
+        <section class="home-grid">
+          <article class="panel">
+            <div class="panel-head">
               <h2>Quick Market Watch</h2>
             </div>
             <div id="tickerRow" class="ticker-row"></div>
           </article>
 
-          <article class="card">
-            <div class="card-header">
-              <h2>Top Features in V8</h2>
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Top Features in V8.2</h2>
             </div>
             <ul class="feature-list">
+              <li>Modern premium layout</li>
               <li>Working symbol/company/country search</li>
-              <li>Large chart with maximize mode</li>
-              <li>Risk score from recent volatility + move</li>
+              <li>Cleaner market explorer</li>
               <li>Global jobs corner with direct links</li>
-              <li>Local browser alerts + alert signup API</li>
-              <li>Secure headers via Cloudflare Worker</li>
+              <li>Risk score with graceful fallback</li>
+              <li>Alerts center with browser notifications</li>
             </ul>
           </article>
-        </div>
+        </section>
       </section>
 
+      <!-- MARKETS -->
       <section id="marketsTab" class="tab-panel">
-        <div class="section-head">
+        <section class="section-head">
           <div>
-            <p class="eyebrow">Markets</p>
+            <p class="eyebrow">MARKETS</p>
             <h2>Market Explorer</h2>
           </div>
-          <div class="market-controls">
-            <input id="symbolInput" type="text" value="NVDA" maxlength="10" />
-            <button id="loadSymbolBtn" class="btn btn-primary" type="button">Load</button>
-            <button id="expandChartBtn" class="btn btn-secondary" type="button">Maximize Chart</button>
-          </div>
-        </div>
 
-        <div class="market-grid">
-          <article class="card quote-card">
-            <div class="card-header">
+          <div class="market-tools">
+            <input id="symbolInput" type="text" value="NVDA" maxlength="10" />
+            <div class="market-tools-actions">
+              <button id="loadSymbolBtn" class="btn btn-primary" type="button">Load</button>
+              <button id="expandChartBtn" class="btn btn-secondary" type="button">Maximize Chart</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="markets-grid">
+          <article class="panel quote-panel">
+            <div class="panel-head">
               <h3>Quote</h3>
               <span id="quoteStatus" class="status-pill">Idle</span>
             </div>
-            <div class="quote-main">
+
+            <div class="quote-top">
               <div>
                 <span class="muted">Symbol</span>
                 <h2 id="quoteSymbol">NVDA</h2>
               </div>
-              <div>
+              <div class="quote-price-block">
                 <span class="muted">Price</span>
                 <h2 id="quotePrice">--</h2>
               </div>
             </div>
+
             <div class="quote-grid">
-              <div class="quote-item">
-                <span>Daily Change</span>
-                <strong id="quoteChange">--</strong>
-              </div>
-              <div class="quote-item">
-                <span>Percent</span>
-                <strong id="quotePercent">--</strong>
-              </div>
-              <div class="quote-item">
-                <span>High</span>
-                <strong id="quoteHigh">--</strong>
-              </div>
-              <div class="quote-item">
-                <span>Low</span>
-                <strong id="quoteLow">--</strong>
-              </div>
-              <div class="quote-item">
-                <span>Open</span>
-                <strong id="quoteOpen">--</strong>
-              </div>
-              <div class="quote-item">
-                <span>Prev Close</span>
-                <strong id="quotePrevClose">--</strong>
-              </div>
+              <div class="mini-box"><span>Daily Change</span><strong id="quoteChange">--</strong></div>
+              <div class="mini-box"><span>Percent</span><strong id="quotePercent">--</strong></div>
+              <div class="mini-box"><span>High</span><strong id="quoteHigh">--</strong></div>
+              <div class="mini-box"><span>Low</span><strong id="quoteLow">--</strong></div>
+              <div class="mini-box"><span>Open</span><strong id="quoteOpen">--</strong></div>
+              <div class="mini-box"><span>Prev Close</span><strong id="quotePrevClose">--</strong></div>
             </div>
           </article>
 
-          <article class="card chart-card">
-            <div class="card-header">
+          <article class="panel chart-panel">
+            <div class="panel-head chart-head">
               <h3>Price Chart</h3>
               <span class="muted">30 recent candles</span>
+              <span id="chartMessage" class="muted chart-message"></span>
             </div>
-            <div class="chart-shell">
+
+            <div class="chart-shell modern-chart-shell">
               <canvas id="marketChart" width="1200" height="420"></canvas>
             </div>
           </article>
-        </div>
+        </section>
       </section>
 
+      <!-- RISK -->
       <section id="riskTab" class="tab-panel">
-        <div class="section-head">
+        <section class="section-head">
           <div>
-            <p class="eyebrow">Risk</p>
+            <p class="eyebrow">RISK</p>
             <h2>Risk Intelligence</h2>
           </div>
-        </div>
+        </section>
 
-        <div class="risk-grid">
-          <article class="card">
-            <div class="card-header">
+        <section class="risk-grid">
+          <article class="panel">
+            <div class="panel-head">
               <h3>AI-Style Risk Score</h3>
             </div>
-            <div class="risk-score-wrap">
+
+            <div class="risk-wrap">
               <div class="risk-ring">
                 <span id="riskScoreValue">--</span>
               </div>
               <div>
                 <p id="riskLabel" class="risk-label">Waiting for data</p>
                 <p id="riskReason" class="muted">
-                  Load a symbol in Markets to calculate volatility-based risk.
+                  Load a symbol in Markets to calculate risk.
                 </p>
               </div>
             </div>
           </article>
 
-          <article class="card">
-            <div class="card-header">
-              <h3>Risk Actions</h3>
+          <article class="panel">
+            <div class="panel-head">
+              <h3>Risk Breakdown</h3>
             </div>
-            <ul class="feature-list">
-              <li>Watch large daily moves</li>
-              <li>Track repeated volatility spikes</li>
-              <li>Use browser alerts for threshold events</li>
-              <li>Add job links for target companies when markets weaken</li>
-            </ul>
-          </article>
-        </div>
 
-        <article class="card">
-          <div class="card-header">
-            <h3>Risk Breakdown</h3>
-          </div>
-          <div class="risk-breakdown">
-            <div class="risk-bar-row">
-              <span>Daily Move Weight</span>
-              <div class="risk-bar"><div id="dailyMoveBar"></div></div>
+            <div class="risk-breakdown">
+              <div class="risk-row">
+                <span>Daily Move Weight</span>
+                <div class="risk-bar"><div id="dailyMoveBar"></div></div>
+              </div>
+              <div class="risk-row">
+                <span>Volatility Weight</span>
+                <div class="risk-bar"><div id="volatilityBar"></div></div>
+              </div>
+              <div class="risk-row">
+                <span>Momentum Weight</span>
+                <div class="risk-bar"><div id="momentumBar"></div></div>
+              </div>
             </div>
-            <div class="risk-bar-row">
-              <span>Volatility Weight</span>
-              <div class="risk-bar"><div id="volatilityBar"></div></div>
-            </div>
-            <div class="risk-bar-row">
-              <span>Momentum Weight</span>
-              <div class="risk-bar"><div id="momentumBar"></div></div>
-            </div>
-          </div>
-        </article>
+          </article>
+        </section>
       </section>
 
+      <!-- JOBS -->
       <section id="jobsTab" class="tab-panel">
-        <div class="section-head">
+        <section class="section-head">
           <div>
-            <p class="eyebrow">Jobs</p>
+            <p class="eyebrow">JOBS</p>
             <h2>Global Jobs Corner</h2>
           </div>
-        </div>
+        </section>
 
         <div class="jobs-toolbar">
           <input id="jobsSearch" type="text" placeholder="Filter by company, region, or industry..." />
@@ -257,17 +240,18 @@
         <div id="jobsGrid" class="jobs-grid"></div>
       </section>
 
+      <!-- ALERTS -->
       <section id="alertsTab" class="tab-panel">
-        <div class="section-head">
+        <section class="section-head">
           <div>
-            <p class="eyebrow">Alerts</p>
+            <p class="eyebrow">ALERTS</p>
             <h2>Alerts Center</h2>
           </div>
-        </div>
+        </section>
 
-        <div class="alerts-grid">
-          <article class="card">
-            <div class="card-header">
+        <section class="alerts-grid">
+          <article class="panel">
+            <div class="panel-head">
               <h3>Browser Alerts</h3>
             </div>
 
@@ -284,25 +268,20 @@
             </form>
 
             <div class="inline-actions">
-              <button id="enableNotificationsBtn" class="btn btn-secondary" type="button">
-                Enable Notifications
-              </button>
-              <button id="runAlertCheckBtn" class="btn btn-secondary" type="button">
-                Check Alerts Now
-              </button>
+              <button id="enableNotificationsBtn" class="btn btn-secondary" type="button">Enable Notifications</button>
+              <button id="runAlertCheckBtn" class="btn btn-secondary" type="button">Check Alerts Now</button>
             </div>
 
             <div id="savedAlerts" class="saved-alerts"></div>
           </article>
 
-          <article class="card">
-            <div class="card-header">
+          <article class="panel">
+            <div class="panel-head">
               <h3>Email Alert Signup</h3>
             </div>
 
             <p class="muted">
-              This version stores signups and prepares the alert pipeline.
-              Real email sending needs a provider added later.
+              Signups are stored and ready for a future email provider connection.
             </p>
 
             <form id="emailAlertForm" class="form-grid">
@@ -327,7 +306,7 @@
 
             <div id="emailAlertStatus" class="api-status"></div>
           </article>
-        </div>
+        </section>
       </section>
     </main>
   </div>

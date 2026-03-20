@@ -81,7 +81,7 @@ const jobsData = [
     region: "United States",
     industry: "Autonomous Vehicles",
     note: "Fleet support, autonomy operations, systems engineering.",
-    url: "https://zoox.com/careers/"
+    url: "https://zoox.com/careers/#job-search-bottom"
   },
   {
     company: "Apple",
@@ -156,16 +156,17 @@ function bindTabs() {
 
 function bindTheme() {
   const themeToggle = document.getElementById("themeToggle");
-  const savedTheme = localStorage.getItem("youooo_theme");
-  if (savedTheme === "light") {
-    document.body.classList.add("light");
+  const savedTheme = localStorage.getItem("youooo_theme_v82");
+
+  if (savedTheme === "dark") {
+    document.body.classList.add("dark");
   }
 
   themeToggle.addEventListener("click", () => {
-    document.body.classList.toggle("light");
+    document.body.classList.toggle("dark");
     localStorage.setItem(
-      "youooo_theme",
-      document.body.classList.contains("light") ? "light" : "dark"
+      "youooo_theme_v82",
+      document.body.classList.contains("dark") ? "dark" : "light"
     );
 
     if (appState.currentCandles.length) {
@@ -174,6 +175,8 @@ function bindTheme() {
       if (modal && !modal.classList.contains("hidden")) {
         renderChart("marketChartExpanded", appState.currentCandles, appState.currentSymbol);
       }
+    } else {
+      renderEmptyChart("marketChart", `${appState.currentSymbol} chart unavailable`);
     }
   });
 }
@@ -511,8 +514,16 @@ function renderQuote(symbol, quote) {
   setText("quoteOpen", formatMoney(quote.o));
   setText("quotePrevClose", formatMoney(quote.pc));
 
-  setClass("quoteChange", isUp ? "up" : "down");
-  setClass("quotePercent", isUp ? "up" : "down");
+  setClass("quoteChange", isUp ? "down" : "up");
+  setClass("quotePercent", isUp ? "down" : "up");
+
+  if (isUp) {
+    setClass("quoteChange", "up");
+    setClass("quotePercent", "up");
+  } else {
+    setClass("quoteChange", "down");
+    setClass("quotePercent", "down");
+  }
 }
 
 function updateHero(symbol, quote) {
@@ -528,38 +539,25 @@ function renderChart(canvasId, data, symbol) {
   const ctx = canvas.getContext("2d");
   const ratio = window.devicePixelRatio || 1;
   const cssWidth = canvas.clientWidth || canvas.width || 1200;
-  const cssHeight = canvasId === "marketChartExpanded" ? 620 : 380;
+  const cssHeight = canvasId === "marketChartExpanded" ? 620 : 420;
 
   canvas.width = cssWidth * ratio;
   canvas.height = cssHeight * ratio;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const styles = getComputedStyle(document.body);
-  const lineColor = styles.getPropertyValue("--accent").trim() || "#5aa7ff";
-  const lineColor2 = styles.getPropertyValue("--accent-2").trim() || "#8c5bff";
-  const textColor = styles.getPropertyValue("--muted").trim() || "#93a1bd";
-  const borderColor = styles.getPropertyValue("--line").trim() || "rgba(255,255,255,0.08)";
-  const bgColor = styles.getPropertyValue("--panel-2").trim() || "#0f1522";
+  const lineColor = styles.getPropertyValue("--accent").trim() || "#4f6df5";
+  const textColor = styles.getPropertyValue("--muted").trim() || "#66738f";
+  const bgColor = styles.getPropertyValue("--panel-solid").trim() || "#ffffff";
 
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  const padding = { top: 30, right: 18, bottom: 38, left: 60 };
-
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 5; i += 1) {
-    const y = padding.top + ((cssHeight - padding.top - padding.bottom) * i) / 5;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(cssWidth - padding.right, y);
-    ctx.stroke();
-  }
+  const padding = { top: 26, right: 20, bottom: 38, left: 60 };
 
   if (!data || data.length < 2) {
-    renderEmptyChart(canvasId, "No chart data available");
+    renderEmptyChart(canvasId, `${symbol} chart unavailable`);
     return;
   }
 
@@ -570,16 +568,13 @@ function renderChart(canvasId, data, symbol) {
 
   const points = data.map((point, index) => {
     const x = padding.left + (index / (data.length - 1)) * (cssWidth - padding.left - padding.right);
-    const y =
-      cssHeight -
-      padding.bottom -
-      ((Number(point.close) - min) / range) * (cssHeight - padding.top - padding.bottom);
+    const y = cssHeight - padding.bottom - ((Number(point.close) - min) / range) * (cssHeight - padding.top - padding.bottom);
     return { x, y, ...point };
   });
 
   const gradient = ctx.createLinearGradient(0, padding.top, 0, cssHeight - padding.bottom);
-  gradient.addColorStop(0, `${lineColor}55`);
-  gradient.addColorStop(1, `${lineColor2}08`);
+  gradient.addColorStop(0, "rgba(79, 109, 245, 0.20)");
+  gradient.addColorStop(1, "rgba(79, 109, 245, 0.02)");
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, cssHeight - padding.bottom);
@@ -607,14 +602,6 @@ function renderChart(canvasId, data, symbol) {
     const y = padding.top + ((cssHeight - padding.top - padding.bottom) * i) / 5 + 4;
     ctx.fillText(formatMoney(value), 8, y);
   }
-
-  const xTicks = 5;
-  for (let i = 0; i <= xTicks; i += 1) {
-    const idx = Math.floor((data.length - 1) * (i / xTicks));
-    const p = points[idx];
-    const label = data[idx].label || "";
-    ctx.fillText(label, Math.max(p.x - 20, padding.left), cssHeight - 12);
-  }
 }
 
 function renderEmptyChart(canvasId, message) {
@@ -624,22 +611,26 @@ function renderEmptyChart(canvasId, message) {
   const ctx = canvas.getContext("2d");
   const ratio = window.devicePixelRatio || 1;
   const cssWidth = canvas.clientWidth || canvas.width || 1200;
-  const cssHeight = canvasId === "marketChartExpanded" ? 620 : 380;
+  const cssHeight = canvasId === "marketChartExpanded" ? 620 : 420;
 
   canvas.width = cssWidth * ratio;
   canvas.height = cssHeight * ratio;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
   const styles = getComputedStyle(document.body);
-  const textColor = styles.getPropertyValue("--muted").trim() || "#93a1bd";
-  const bgColor = styles.getPropertyValue("--panel-2").trim() || "#0f1522";
+  const textColor = styles.getPropertyValue("--muted").trim() || "#66738f";
+  const bgColor = styles.getPropertyValue("--panel-solid").trim() || "#ffffff";
 
   ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
+
   ctx.fillStyle = textColor;
-  ctx.font = "16px sans-serif";
-  ctx.fillText(message, 24, 42);
+  ctx.font = "600 18px sans-serif";
+  ctx.fillText(message, 36, 52);
+
+  ctx.font = "14px sans-serif";
+  ctx.fillText("Live quote is working. Historical candle data is unavailable right now.", 36, 82);
 }
 
 function openChartModal() {
@@ -708,7 +699,7 @@ function updateRisk(symbol, quote, candles) {
 
   const ring = document.querySelector(".risk-ring");
   if (ring) {
-    ring.style.background = `conic-gradient(var(--accent) ${score * 3.6}deg, rgba(255,255,255,0.08) ${score * 3.6}deg)`;
+    ring.style.background = `conic-gradient(var(--accent) ${score * 3.6}deg, rgba(79,109,245,0.08) ${score * 3.6}deg)`;
   }
 
   const dailyMoveBar = document.getElementById("dailyMoveBar");
@@ -734,7 +725,7 @@ function renderRiskUnavailable(symbol, quote) {
 
   const ring = document.querySelector(".risk-ring");
   if (ring) {
-    ring.style.background = `conic-gradient(var(--accent) ${fallbackScore * 3.6}deg, rgba(255,255,255,0.08) ${fallbackScore * 3.6}deg)`;
+    ring.style.background = `conic-gradient(var(--accent) ${fallbackScore * 3.6}deg, rgba(79,109,245,0.08) ${fallbackScore * 3.6}deg)`;
   }
 
   const dailyMoveBar = document.getElementById("dailyMoveBar");
@@ -844,16 +835,7 @@ function persistAlerts() {
 }
 
 function showChartUnavailable(message) {
-  let el = document.getElementById("chartMessage");
-  const chartShell = document.querySelector(".chart-card .card-header");
-
-  if (!el && chartShell) {
-    el = document.createElement("span");
-    el.id = "chartMessage";
-    el.className = "muted";
-    chartShell.appendChild(el);
-  }
-
+  const el = document.getElementById("chartMessage");
   if (el) el.textContent = message;
 }
 
