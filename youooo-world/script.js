@@ -110,26 +110,37 @@ document.addEventListener("DOMContentLoaded", () => {
   renderSavedAlerts();
   loadTickers();
   loadSymbol("NVDA");
+
+  const openJobsBtn = document.getElementById("openJobsBtn");
+  if (openJobsBtn) {
+    openJobsBtn.addEventListener("click", () => {
+      activateTab("jobs");
+      history.replaceState(null, "", "#jobs");
+    });
+  }
 });
 
-function bindTabs() {
+function activateTab(tab) {
   const links = document.querySelectorAll(".tab-link");
   const panels = document.querySelectorAll(".tab-panel");
 
-  function activate(tab) {
-    links.forEach((link) => {
-      link.classList.toggle("active", link.dataset.tab === tab);
-    });
-    panels.forEach((panel) => {
-      panel.classList.toggle("active", panel.id === `${tab}Tab`);
-    });
-  }
+  links.forEach((link) => {
+    link.classList.toggle("active", link.dataset.tab === tab);
+  });
+
+  panels.forEach((panel) => {
+    panel.classList.toggle("active", panel.id === `${tab}Tab`);
+  });
+}
+
+function bindTabs() {
+  const links = document.querySelectorAll(".tab-link");
 
   links.forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const tab = link.dataset.tab;
-      activate(tab);
+      activateTab(tab);
       history.replaceState(null, "", `#${tab}`);
     });
   });
@@ -137,9 +148,9 @@ function bindTabs() {
   const hash = window.location.hash.replace("#", "");
   const valid = ["home", "markets", "risk", "jobs", "alerts"];
   if (valid.includes(hash)) {
-    activate(hash);
+    activateTab(hash);
   } else {
-    activate("home");
+    activateTab("home");
   }
 }
 
@@ -210,11 +221,13 @@ function bindSearch() {
         results.classList.add("hidden");
 
         if (type === "symbol") {
-          document.querySelector('[data-tab="markets"]').click();
+          activateTab("markets");
+          history.replaceState(null, "", "#markets");
           document.getElementById("symbolInput").value = label.toUpperCase();
           loadSymbol(label.toUpperCase());
         } else {
-          document.querySelector('[data-tab="jobs"]').click();
+          activateTab("jobs");
+          history.replaceState(null, "", "#jobs");
           document.getElementById("jobsSearch").value = label;
           renderJobs(
             jobsData.filter((job) =>
@@ -235,7 +248,8 @@ function bindSearch() {
   const heroBtn = document.getElementById("heroLoadBtn");
   if (heroBtn) {
     heroBtn.addEventListener("click", () => {
-      document.querySelector('[data-tab="markets"]').click();
+      activateTab("markets");
+      history.replaceState(null, "", "#markets");
       loadSymbol(appState.currentSymbol || "NVDA");
     });
   }
@@ -708,7 +722,7 @@ function updateRisk(symbol, quote, candles) {
 
 function renderRiskUnavailable(symbol, quote) {
   const dailyMove = Math.abs(Number(quote?.dp || 0));
-  let fallbackScore = Math.max(5, Math.min(100, Math.round(dailyMove * 8 + 10)));
+  const fallbackScore = Math.max(5, Math.min(100, Math.round(dailyMove * 8 + 10)));
 
   setText("riskScoreValue", fallbackScore);
   setText("riskLabel", "Estimated Risk");

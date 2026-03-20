@@ -2,518 +2,349 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YOUOOO Radar</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Youooo World V8</title>
+  <meta
+    name="description"
+    content="Youooo World V8 - market intelligence, risk tracking, jobs, and alerts."
+  />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand-block">
-        <div class="brand">YOUOOO RADAR</div>
-        <div class="subtitle">Company intelligence for layoffs, hiring shifts, AI demand, and market reaction</div>
+      <div class="brand-wrap">
+        <a class="brand" href="#home">
+          <span class="brand-globe">🌍</span>
+          <span class="brand-text">
+            <strong>Youooo World</strong>
+            <small>V8 Intelligence Dashboard</small>
+          </span>
+        </a>
       </div>
 
-      <nav class="top-nav">
-        <a href="#overviewTab">Overview</a>
-        <a href="#companiesTab">Companies</a>
-        <a href="#marketsTab">Markets</a>
-        <a href="#aiTab">AI</a>
-        <a href="#riskTab">Risk</a>
-      </nav>
-
-      <div class="topbar-right">
-        <div class="status-pill online">STATUS: LIVE</div>
-        <div class="status-pill premium">PRODUCT: V7</div>
-        <div class="status-pill" id="updatedAt">UPDATED: --</div>
+      <div class="topbar-actions">
+        <div class="search-wrap">
+          <input
+            id="globalSearch"
+            type="text"
+            placeholder="Search symbol, company, country..."
+            autocomplete="off"
+          />
+          <div id="searchResults" class="search-results hidden"></div>
+        </div>
+        <button id="themeToggle" class="btn btn-secondary" type="button">Theme</button>
       </div>
     </header>
 
-    <main class="page-shell">
-      <section class="hero">
-        <div class="hero-main card">
-          <div class="hero-kicker">CLEAR PRODUCT</div>
-          <h1>Layoff Radar + Hiring Shift Intelligence</h1>
-          <p class="hero-copy">
-            See which companies look pressured, who still has momentum, and how layoffs, AI demand, and geopolitics connect to markets and hiring.
-          </p>
+    <nav class="tabs">
+      <a href="#home" class="tab-link active" data-tab="home">Home</a>
+      <a href="#markets" class="tab-link" data-tab="markets">Markets</a>
+      <a href="#risk" class="tab-link" data-tab="risk">Risk</a>
+      <a href="#jobs" class="tab-link" data-tab="jobs">Jobs</a>
+      <a href="#alerts" class="tab-link" data-tab="alerts">Alerts</a>
+    </nav>
 
-          <div class="hero-actions">
-            <button class="mode-btn active" data-mode="jobseeker" id="jobSeekerModeBtn">Job Seeker Mode</button>
-            <button class="mode-btn" data-mode="trader" id="traderModeBtn">Trader Mode</button>
-            <button class="mode-btn ghost" id="alertsBtn">Premium Alerts</button>
-          </div>
-
-          <div class="hero-stats">
-            <div class="stat-card">
-              <div class="stat-label">High Risk Companies</div>
-              <div class="stat-value" id="statHighRisk">--</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Healthier Names</div>
-              <div class="stat-value" id="statHealthier">--</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">AI Demand Signals</div>
-              <div class="stat-value" id="statAI">--</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Risk Headlines</div>
-              <div class="stat-value" id="statRisk">--</div>
+    <main class="main-content">
+      <section id="homeTab" class="tab-panel active">
+        <div class="hero-card card">
+          <div class="hero-left">
+            <p class="eyebrow">Global intelligence for markets and careers</p>
+            <h1>Track stocks, risk, and job opportunities in one place.</h1>
+            <p class="hero-text">
+              Youooo World V8 combines live stock snapshots, AI-style risk scoring,
+              global jobs links, and alert foundations into one dashboard.
+            </p>
+            <div class="hero-actions">
+              <button id="heroLoadBtn" class="btn btn-primary" type="button">
+                Load Market Snapshot
+              </button>
+              <button id="openJobsBtn" class="btn btn-secondary" type="button">
+                Open Jobs Corner
+              </button>
             </div>
           </div>
+          <div class="hero-right">
+            <div class="mini-grid">
+              <div class="mini-stat">
+                <span>Tracked Symbol</span>
+                <strong id="heroSymbol">NVDA</strong>
+              </div>
+              <div class="mini-stat">
+                <span>Last Price</span>
+                <strong id="heroPrice">--</strong>
+              </div>
+              <div class="mini-stat">
+                <span>Daily Move</span>
+                <strong id="heroChange">--</strong>
+              </div>
+              <div class="mini-stat">
+                <span>Risk Score</span>
+                <strong id="heroRisk">--</strong>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <div class="stock-explorer">
-            <div class="stock-explorer-head">
+        <div class="dashboard-grid">
+          <article class="card">
+            <div class="card-header">
+              <h2>Quick Market Watch</h2>
+            </div>
+            <div id="tickerRow" class="ticker-row"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <h2>Top Features in V8</h2>
+            </div>
+            <ul class="feature-list">
+              <li>Working symbol/company/country search</li>
+              <li>Large chart with maximize mode</li>
+              <li>Risk score from recent volatility + move</li>
+              <li>Global jobs corner with direct links</li>
+              <li>Local browser alerts + alert signup API</li>
+              <li>Secure headers via Cloudflare Worker</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="marketsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Markets</p>
+            <h2>Market Explorer</h2>
+          </div>
+          <div class="market-controls">
+            <input id="symbolInput" type="text" value="NVDA" maxlength="10" />
+            <button id="loadSymbolBtn" class="btn btn-primary" type="button">Load</button>
+            <button id="expandChartBtn" class="btn btn-secondary" type="button">Maximize Chart</button>
+          </div>
+        </div>
+
+        <div class="market-grid">
+          <article class="card quote-card">
+            <div class="card-header">
+              <h3>Quote</h3>
+              <span id="quoteStatus" class="status-pill">Idle</span>
+            </div>
+            <div class="quote-main">
               <div>
-                <div class="hero-kicker">STOCK EXPLORER</div>
-                <h3 class="stock-explorer-title">Live Chart + Ticker Intelligence</h3>
-                <p class="stock-explorer-copy">
-                  Search a ticker, expand the chart, and connect price action to jobs, AI, and geopolitical narratives.
-                </p>
+                <span class="muted">Symbol</span>
+                <h2 id="quoteSymbol">NVDA</h2>
               </div>
-
-              <div class="stock-controls">
-                <input
-                  id="tickerInput"
-                  class="ticker-input"
-                  type="text"
-                  placeholder="Enter ticker: NVDA, AMD, TSLA..."
-                  value="NVDA"
-                />
-                <button id="loadTickerBtn" class="ticker-load-btn">Load</button>
-                <button id="expandChartBtn" class="ticker-load-btn secondary-btn">Expand Chart</button>
+              <div>
+                <span class="muted">Price</span>
+                <h2 id="quotePrice">--</h2>
               </div>
             </div>
-
-            <div class="quick-tickers">
-              <button class="quick-ticker-btn" data-symbol="NVDA">NVDA</button>
-              <button class="quick-ticker-btn" data-symbol="AMD">AMD</button>
-              <button class="quick-ticker-btn" data-symbol="MSFT">MSFT</button>
-              <button class="quick-ticker-btn" data-symbol="TSLA">TSLA</button>
-              <button class="quick-ticker-btn" data-symbol="GOOGL">GOOGL</button>
-              <button class="quick-ticker-btn" data-symbol="AMZN">AMZN</button>
-              <button class="quick-ticker-btn" data-symbol="META">META</button>
-              <button class="quick-ticker-btn" data-symbol="INTC">INTC</button>
-            </div>
-
-            <div class="chart-panel chart-panel-vertical">
-              <div class="chart-main" id="chartContainer">
-                <div id="tvChartWidget" class="tv-chart-widget"></div>
-
-                <div id="stockSummaryBar" class="stock-summary-bar"></div>
-
-                <div class="ticker-intelligence-panel">
-                  <div class="ticker-intel-card">
-                    <div class="section-headline-row">
-                      <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
-                      <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
-                    </div>
-                    <div id="tickerWhyMatters" class="intel-list">
-                      <div class="empty-state">Building ticker intelligence...</div>
-                    </div>
-                  </div>
-
-                  <div class="ticker-intel-card">
-                    <div class="section-headline-row">
-                      <h3>Suggested Action</h3>
-                      <span class="trend-pill warning">Decision Layer</span>
-                    </div>
-                    <div id="tickerActionBox" class="action-box">
-                      <div class="empty-state">Building action guidance...</div>
-                    </div>
-                  </div>
-
-                  <div class="ticker-intel-card premium-mini">
-                    <div class="section-headline-row">
-                      <h3>Premium Tracking</h3>
-                      <span class="trend-pill gold">Alerts</span>
-                    </div>
-                    <div class="premium-mini-copy">
-                      Save this ticker, save your email, and get ready for alert automation.
-                    </div>
-                    <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
-                  </div>
-                </div>
+            <div class="quote-grid">
+              <div class="quote-item">
+                <span>Daily Change</span>
+                <strong id="quoteChange">--</strong>
+              </div>
+              <div class="quote-item">
+                <span>Percent</span>
+                <strong id="quotePercent">--</strong>
+              </div>
+              <div class="quote-item">
+                <span>High</span>
+                <strong id="quoteHigh">--</strong>
+              </div>
+              <div class="quote-item">
+                <span>Low</span>
+                <strong id="quoteLow">--</strong>
+              </div>
+              <div class="quote-item">
+                <span>Open</span>
+                <strong id="quoteOpen">--</strong>
+              </div>
+              <div class="quote-item">
+                <span>Prev Close</span>
+                <strong id="quotePrevClose">--</strong>
               </div>
             </div>
-          </div>
-        </div>
+          </article>
 
-        <div class="hero-side card">
-          <div class="section-headline-row">
-            <h2>Daily Brief</h2>
-            <span class="trend-pill gold">Use This First</span>
-          </div>
-          <div id="dailyBrief" class="brief-list">
-            <div class="empty-state">Building daily brief...</div>
-          </div>
+          <article class="card chart-card">
+            <div class="card-header">
+              <h3>Price Chart</h3>
+              <span class="muted">30 recent candles</span>
+            </div>
+            <div class="chart-shell">
+              <canvas id="marketChart" width="1200" height="420"></canvas>
+            </div>
+          </article>
         </div>
       </section>
 
-      <section class="dashboard-grid">
-        <div class="main-column">
-          <div class="card sticky-mini-bar">
-            <div class="mini-toolbar">
-              <div class="search-wrap">
-                <input
-                  id="companySearch"
-                  class="search-input"
-                  type="text"
-                  placeholder="Search company: Intel, AMD, NVIDIA, Tesla..."
-                />
-              </div>
-              <div class="toolbar-pills">
-                <span class="tiny-pill">Tech Jobs</span>
-                <span class="tiny-pill">AI Infra</span>
-                <span class="tiny-pill">Semis</span>
-                <span class="tiny-pill">Macro Risk</span>
-              </div>
-            </div>
+      <section id="riskTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Risk</p>
+            <h2>Risk Intelligence</h2>
           </div>
-
-          <nav class="tabs">
-            <button class="tab-btn active" data-tab="overviewTab">Overview</button>
-            <button class="tab-btn" data-tab="companiesTab">Companies</button>
-            <button class="tab-btn" data-tab="marketsTab">Markets</button>
-            <button class="tab-btn" data-tab="aiTab">AI</button>
-            <button class="tab-btn" data-tab="riskTab">Risk</button>
-          </nav>
-
-          <section id="overviewTab" class="tab-content active">
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Top Opportunities Today</h2>
-                  <span class="trend-pill success">Most Shareable</span>
-                </div>
-                <div id="topOpportunities" class="opportunities-list">
-                  <div class="empty-state">Building opportunities...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Action Feed</h2>
-                  <span class="trend-pill gold">Today</span>
-                </div>
-                <div id="liveAlerts" class="alerts-list">
-                  <div class="empty-state">Loading action feed...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>Top Signals Now</h2>
-                <span class="trend-pill neutral">Click To Drive Chart</span>
-              </div>
-
-              <div class="signal-filters" id="signalFilters">
-                <button class="filter-btn active" data-filter="all">All</button>
-                <button class="filter-btn" data-filter="jobs">Jobs</button>
-                <button class="filter-btn" data-filter="market">Markets</button>
-                <button class="filter-btn" data-filter="ai">AI</button>
-                <button class="filter-btn" data-filter="risk">Risk</button>
-              </div>
-
-              <div id="topSignalsList" class="top-signals-list">
-                <div class="empty-state">Loading top signals...</div>
-              </div>
-            </div>
-
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Company Risk Scoreboard</h2>
-                  <span class="trend-pill danger">What To Watch</span>
-                </div>
-                <div id="companyRiskBoard" class="risk-board">
-                  <div class="empty-state">Building company risk board...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Where Talent Is Moving</h2>
-                  <span class="trend-pill success">Opportunity</span>
-                </div>
-                <div id="hiringShift" class="shift-list">
-                  <div class="empty-state">Finding hiring shifts...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Sector Heatmap</h2>
-                  <span class="trend-pill neutral">Fast Read</span>
-                </div>
-                <div id="sectorHeatmap" class="heatmap-grid">
-                  <div class="empty-state">Loading sector heatmap...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Layoff Timeline</h2>
-                  <span class="trend-pill warning">Pressure</span>
-                </div>
-                <div id="layoffTimeline" class="timeline">
-                  <div class="empty-state">Loading timeline...</div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section id="companiesTab" class="tab-content">
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Company Intelligence</h2>
-                  <span class="trend-pill gold">Most Valuable Page</span>
-                </div>
-                <p class="card-subtitle">
-                  One place to understand which companies look risky, resilient, or worth tracking.
-                </p>
-                <div id="companyCards" class="company-cards">
-                  <div class="empty-state">Building company cards...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Big Companies Jobs Corner</h2>
-                  <span class="trend-pill success">Job Finder</span>
-                </div>
-                <p class="card-subtitle">
-                  Quick company targets for job seekers. Use this as your high-value application shortlist.
-                </p>
-                <div id="bigCompanyJobsCorner" class="jobs-corner-list">
-                  <div class="empty-state">Building jobs corner...</div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section id="marketsTab" class="tab-content">
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Watchlist</h2>
-                  <span class="trend-pill neutral">Market</span>
-                </div>
-                <div id="watchlistGrid" class="watchlist-grid">
-                  <div class="empty-state">Loading watchlist...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Market Movers</h2>
-                  <span class="trend-pill neutral">Momentum</span>
-                </div>
-                <div id="marketMovers" class="list-block">
-                  <div class="empty-state">Loading movers...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>Cause → Effect Engine</h2>
-                <span class="trend-pill warning">Why Markets Move</span>
-              </div>
-              <div id="impactEngine" class="impact-grid">
-                <div class="empty-state">Building impact engine...</div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>Market Feed</h2>
-                <span class="trend-pill neutral">Live Feed</span>
-              </div>
-              <div id="marketNews" class="news-feed">
-                <div class="empty-state">Loading market feed...</div>
-              </div>
-            </div>
-          </section>
-
-          <section id="aiTab" class="tab-content">
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>AI Infra Signals</h2>
-                  <span class="trend-pill success">Growth</span>
-                </div>
-                <div id="aiSignalsBoard" class="signal-summary-grid">
-                  <div class="empty-state">Loading AI signals...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Chip Tracker</h2>
-                  <span class="trend-pill warning">Semis</span>
-                </div>
-                <div id="chipWarTracker" class="tracker-list">
-                  <div class="empty-state">Loading chip tracker...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>AI Feed</h2>
-                <span class="trend-pill success">Live</span>
-              </div>
-              <div id="aiFeed" class="news-feed">
-                <div class="empty-state">Loading AI feed...</div>
-              </div>
-            </div>
-          </section>
-
-          <section id="riskTab" class="tab-content">
-            <div class="grid-2">
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Regional Risk Levels</h2>
-                  <span class="trend-pill danger">Global Risk</span>
-                </div>
-                <div id="regionalRiskBoard" class="risk-regions">
-                  <div class="empty-state">Loading regional risk...</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="section-headline-row">
-                  <h2>Conflict → Market Impact</h2>
-                  <span class="trend-pill warning">Spillover</span>
-                </div>
-                <div id="conflictImpact" class="impact-grid">
-                  <div class="empty-state">Loading conflict impact...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>Risk Feed</h2>
-                <span class="trend-pill danger">Watch</span>
-              </div>
-              <div id="riskFeed" class="news-feed">
-                <div class="empty-state">Loading risk feed...</div>
-              </div>
-            </div>
-          </section>
         </div>
 
-        <aside class="side-column">
-          <div class="card">
-            <div class="section-headline-row">
-              <h2>Jobs Feed</h2>
-              <span class="trend-pill danger">Radar</span>
+        <div class="risk-grid">
+          <article class="card">
+            <div class="card-header">
+              <h3>AI-Style Risk Score</h3>
             </div>
-            <div id="jobsFeed" class="news-feed compact-feed">
-              <div class="empty-state">Loading jobs feed...</div>
+            <div class="risk-score-wrap">
+              <div class="risk-ring">
+                <span id="riskScoreValue">--</span>
+              </div>
+              <div>
+                <p id="riskLabel" class="risk-label">Waiting for data</p>
+                <p id="riskReason" class="muted">
+                  Load a symbol in Markets to calculate volatility-based risk.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <h3>Risk Actions</h3>
+            </div>
+            <ul class="feature-list">
+              <li>Watch large daily moves</li>
+              <li>Track repeated volatility spikes</li>
+              <li>Use browser alerts for threshold events</li>
+              <li>Add job links for target companies when markets weaken</li>
+            </ul>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-header">
+            <h3>Risk Breakdown</h3>
+          </div>
+          <div class="risk-breakdown">
+            <div class="risk-bar-row">
+              <span>Daily Move Weight</span>
+              <div class="risk-bar"><div id="dailyMoveBar"></div></div>
+            </div>
+            <div class="risk-bar-row">
+              <span>Volatility Weight</span>
+              <div class="risk-bar"><div id="volatilityBar"></div></div>
+            </div>
+            <div class="risk-bar-row">
+              <span>Momentum Weight</span>
+              <div class="risk-bar"><div id="momentumBar"></div></div>
             </div>
           </div>
-        </aside>
+        </article>
       </section>
 
-      <footer class="site-footer">
-        <span>Built by Ahmed Aldulaimi</span>
-        <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      </footer>
+      <section id="jobsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Jobs</p>
+            <h2>Global Jobs Corner</h2>
+          </div>
+        </div>
+
+        <div class="jobs-toolbar">
+          <input id="jobsSearch" type="text" placeholder="Filter by company, region, or industry..." />
+        </div>
+
+        <div id="jobsGrid" class="jobs-grid"></div>
+      </section>
+
+      <section id="alertsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Alerts</p>
+            <h2>Alerts Center</h2>
+          </div>
+        </div>
+
+        <div class="alerts-grid">
+          <article class="card">
+            <div class="card-header">
+              <h3>Browser Alerts</h3>
+            </div>
+
+            <form id="localAlertForm" class="form-grid">
+              <label>
+                Symbol
+                <input id="alertSymbol" type="text" value="NVDA" maxlength="10" />
+              </label>
+              <label>
+                Trigger price above
+                <input id="alertAbove" type="number" step="0.01" placeholder="Example: 1000" />
+              </label>
+              <button class="btn btn-primary" type="submit">Save Browser Alert</button>
+            </form>
+
+            <div class="inline-actions">
+              <button id="enableNotificationsBtn" class="btn btn-secondary" type="button">
+                Enable Notifications
+              </button>
+              <button id="runAlertCheckBtn" class="btn btn-secondary" type="button">
+                Check Alerts Now
+              </button>
+            </div>
+
+            <div id="savedAlerts" class="saved-alerts"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <h3>Email Alert Signup</h3>
+            </div>
+
+            <p class="muted">
+              This version stores signups and prepares the alert pipeline.
+              Real email sending needs a provider added later.
+            </p>
+
+            <form id="emailAlertForm" class="form-grid">
+              <label>
+                Email
+                <input id="emailInput" type="email" placeholder="you@example.com" required />
+              </label>
+              <label>
+                Symbol
+                <input id="emailSymbol" type="text" value="NVDA" maxlength="10" />
+              </label>
+              <label>
+                Alert type
+                <select id="emailAlertType">
+                  <option value="price-spike">Price Spike</option>
+                  <option value="risk-change">Risk Change</option>
+                  <option value="watchlist">Watchlist</option>
+                </select>
+              </label>
+              <button class="btn btn-primary" type="submit">Save Email Alert Request</button>
+            </form>
+
+            <div id="emailAlertStatus" class="api-status"></div>
+          </article>
+        </div>
+      </section>
     </main>
   </div>
 
-  <div id="signalModal" class="modal hidden" aria-hidden="true">
+  <div id="chartModal" class="modal hidden" aria-hidden="true">
     <div class="modal-backdrop" id="modalBackdrop"></div>
-    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <button class="modal-close" id="closeModalBtn" aria-label="Close">×</button>
-
-      <div class="modal-kicker">WHY IT MATTERS</div>
-      <h2 id="modalTitle">Signal Details</h2>
-      <div class="modal-meta" id="modalMeta">Loading...</div>
-
-      <div class="modal-section">
-        <h3>What happened</h3>
-        <p id="modalSummary">—</p>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalChartTitle">Expanded Chart</h3>
+        <button id="closeModalBtn" class="btn btn-secondary" type="button">Close</button>
       </div>
-
-      <div class="modal-section">
-        <h3>Impact</h3>
-        <ul id="modalImpactList" class="modal-list"></ul>
-      </div>
-
-      <div class="modal-section">
-        <h3>Watch</h3>
-        <ul id="modalWatchList" class="modal-list"></ul>
-      </div>
-
-      <div class="modal-section">
-        <h3>Confidence</h3>
-        <div id="modalConfidence" class="confidence-badge">Medium</div>
-      </div>
-
-      <div class="modal-actions">
-        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-link">Open source</a>
+      <div class="modal-chart-shell">
+        <canvas id="marketChartExpanded" width="1600" height="700"></canvas>
       </div>
     </div>
   </div>
 
-  <div id="premiumModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-backdrop" id="premiumBackdrop"></div>
-    <div class="modal-dialog premium-dialog" role="dialog" aria-modal="true" aria-labelledby="premiumTitle">
-      <button class="modal-close" id="closePremiumBtn" aria-label="Close">×</button>
-      <div class="modal-kicker">PREMIUM</div>
-      <h2 id="premiumTitle">Premium Alerts</h2>
-      <p class="card-subtitle">
-        Save your email and alert preferences now. This version stores your preferences in your browser and prepares the product for real alert automation.
-      </p>
-
-      <form id="premiumAlertForm" class="alert-form">
-        <label class="form-label">
-          Email
-          <input id="alertEmail" class="form-input" type="email" placeholder="you@example.com" required />
-        </label>
-
-        <label class="form-label">
-          Ticker
-          <input id="alertTicker" class="form-input" type="text" placeholder="NVDA" />
-        </label>
-
-        <label class="form-label">
-          Alert Type
-          <select id="alertType" class="form-input">
-            <option value="market-move">Market move</option>
-            <option value="company-risk">Company risk</option>
-            <option value="layoffs">Layoff detection</option>
-            <option value="ai-demand">AI / chip demand</option>
-            <option value="jobs-shift">Hiring momentum</option>
-          </select>
-        </label>
-
-        <button type="submit" class="premium-btn">Save Alert Preference</button>
-      </form>
-
-      <div id="alertSaveStatus" class="alert-save-status"></div>
-
-      <div class="premium-feature-list">
-        <div class="premium-feature">Company risk alerts</div>
-        <div class="premium-feature">Layoff detection</div>
-        <div class="premium-feature">Hiring momentum changes</div>
-        <div class="premium-feature">AI / chip demand shifts</div>
-        <div class="premium-feature">Market impact alerts</div>
-        <div class="premium-feature">Saved watchlists</div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://s3.tradingview.com/tv.js"></script>
-  <script src="script.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
