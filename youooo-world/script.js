@@ -7,7 +7,11 @@ const state = {
   ai: [],
   movers: [],
   watchlist: [],
-  activeFilter: "all"
+  activeFilter: "all",
+  mode: "jobseeker",
+  companySearch: "",
+  selectedTicker: "NVDA",
+  selectedMarketSymbol: "NASDAQ:NVDA"
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,6 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFilters();
   initModal();
+  initModes();
+  initSearch();
+  initPremium();
+  initTickerExplorer();
   loadAllData();
 });
 
@@ -65,12 +73,58 @@ function initFilters() {
   });
 }
 
+function initModes() {
+  const buttons = document.querySelectorAll(".mode-btn[data-mode]");
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.remove("active"));
+      button.classList.add("active");
+      state.mode = button.dataset.mode;
+      renderAll();
+    });
+  });
+}
+
+function initSearch() {
+  const input = document.getElementById("companySearch");
+  if (!input) return;
+
+  input.addEventListener("input", (event) => {
+    state.companySearch = event.target.value.trim().toLowerCase();
+    renderCompanyCards();
+  });
+}
+
+function initPremium() {
+  const openButtons = [document.getElementById("alertsBtn"), document.getElementById("premiumCtaBtn")].filter(Boolean);
+  const modal = document.getElementById("premiumModal");
+  const closeBtn = document.getElementById("closePremiumBtn");
+  const backdrop = document.getElementById("premiumBackdrop");
+
+  const open = () => {
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  };
+
+  const close = () => {
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  openButtons.forEach((btn) => btn.addEventListener("click", open));
+  closeBtn?.addEventListener("click", close);
+  backdrop?.addEventListener("click", close);
+}
+
 function initModal() {
   const modal = document.getElementById("signalModal");
   const closeBtn = document.getElementById("closeModalBtn");
   const backdrop = document.getElementById("modalBackdrop");
 
   const closeModal = () => {
+    if (!modal) return;
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
   };
@@ -123,6 +177,216 @@ function openSignalModal(signal) {
   modal.setAttribute("aria-hidden", "false");
 }
 
+function initTickerExplorer() {
+  const input = document.getElementById("tickerInput");
+  const loadBtn = document.getElementById("loadTickerBtn");
+  const quickBtns = document.querySelectorAll(".quick-ticker-btn");
+
+  loadBtn?.addEventListener("click", () => {
+    const raw = input?.value || state.selectedTicker;
+    applyTicker(raw);
+  });
+
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      applyTicker(input.value);
+    }
+  });
+
+  quickBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const symbol = btn.dataset.symbol || "NVDA";
+      if (input) input.value = symbol;
+      applyTicker(symbol);
+    });
+  });
+
+  renderTickerWidget(state.selectedMarketSymbol);
+  updateTickerSummary();
+}
+
+function applyTicker(rawTicker) {
+  const normalized = normalizeMarketSymbol(rawTicker);
+  const bare = extractBareTicker(normalized);
+
+  state.selectedTicker = bare;
+  state.selectedMarketSymbol = normalized;
+
+  const input = document.getElementById("tickerInput");
+  if (input) input.value = bare;
+
+  renderTickerWidget(normalized);
+  updateTickerSummary();
+  renderTickerIntelligence();
+}
+
+function normalizeMarketSymbol(rawTicker) {
+  const raw = String(rawTicker || "").trim().toUpperCase();
+  if (!raw) return "NASDAQ:NVDA";
+  if (raw.includes(":")) return raw;
+
+  const known = {
+    NVDA: "NASDAQ:NVDA",
+    AMD: "NASDAQ:AMD",
+    MSFT: "NASDAQ:MSFT",
+    TSLA: "NASDAQ:TSLA",
+    GOOGL: "NASDAQ:GOOGL",
+    GOOG: "NASDAQ:GOOG",
+    AMZN: "NASDAQ:AMZN",
+    META: "NASDAQ:META",
+    AAPL: "NASDAQ:AAPL",
+    INTC: "NASDAQ:INTC",
+    QQQ: "NASDAQ:QQQ",
+    SPY: "AMEX:SPY",
+    COIN: "NASDAQ:COIN",
+    UBER: "NYSE:UBER"
+  };
+
+  return known[raw] || `NASDAQ:${raw}`;
+}
+
+function extractBareTicker(symbol) {
+  return String(symbol || "NVDA").split(":").pop();
+}
+
+function renderTickerWidget(symbol) {
+  const container = document.getElementById("tvChartWidget");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (typeof TradingView === "undefined") {
+    container.innerHTML = `<div class="empty-state">Chart library is still loading...</div>`;
+    return;
+  }
+
+  new TradingView.widget({
+    autosize: true,
+    symbol,
+    interval: "D",
+    timezone: "America/Chicago",
+    theme: "dark",
+    style: "1",
+    locale: "en",
+    hide_top_toolbar: false,
+    hide_legend: false,
+    withdateranges: true,
+    allow_symbol_change: false,
+    save_image: false,
+    studies: ["MACD@tv-basicstudies", "RSI@tv-basicstudies"],
+    container_id: "tvChartWidget"
+  });
+}
+
+function updateTickerSummary() {
+  const container = document.getElementById("stockSummaryBar");
+  if (!container) return;
+
+  const ticker = state.selectedTicker || "NVDA";
+  const watch = findTickerWatchlistItem(ticker);
+  const mover = findTickerMoverItem(ticker);
+
+  const watchText = watch
+    ? `${formatMoney(watch.price)} · ${formatPercent(watch.changePercent)}`
+    : "Not in current watchlist";
+
+  const modeLens = state.mode === "trader" ? "Trader" : "Job Seeker";
+  const narrative = buildTickerNarrative(ticker, mover, watch);
+
+  container.innerHTML = `
+    <div class="stock-mini-card">
+      <div class="stock-mini-label">Selected</div>
+      <div class="stock-mini-value">${escapeHtml(ticker)}</div>
+    </div>
+    <div class="stock-mini-card">
+      <div class="stock-mini-label">Watchlist</div>
+      <div class="stock-mini-value ${watch ? classForChange(watch.changePercent) : ""}">
+        ${escapeHtml(watchText)}
+      </div>
+    </div>
+    <div class="stock-mini-card">
+      <div class="stock-mini-label">Mode Lens</div>
+      <div class="stock-mini-value">${escapeHtml(modeLens)}</div>
+    </div>
+    <div class="stock-mini-card">
+      <div class="stock-mini-label">Narrative</div>
+      <div class="stock-mini-value">${escapeHtml(narrative)}</div>
+    </div>
+  `;
+}
+
+function renderTickerIntelligence() {
+  const titleEl = document.getElementById("tickerIntelTitle");
+  const modeEl = document.getElementById("tickerIntelMode");
+  const whyEl = document.getElementById("tickerWhyMatters");
+  const actionEl = document.getElementById("tickerActionBox");
+  if (!titleEl || !modeEl || !whyEl || !actionEl) return;
+
+  const ticker = state.selectedTicker || "NVDA";
+  const intel = buildTickerIntelligence(ticker);
+  const action = buildTickerAction(ticker);
+
+  titleEl.textContent = `Why ${ticker} matters today`;
+  modeEl.textContent = state.mode === "trader" ? "Trader" : "Job Seeker";
+
+  whyEl.innerHTML = intel.points.map((item) => `
+    <div class="intel-item">
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="intel-note">${escapeHtml(item.note)}</div>
+    </div>
+  `).join("");
+
+  actionEl.innerHTML = `
+    <div class="action-item">
+      <div class="action-top">
+        <strong>${escapeHtml(action.title)}</strong>
+        <span class="action-tag ${action.className}">${escapeHtml(action.label)}</span>
+      </div>
+      <div class="action-copy">${escapeHtml(action.copy)}</div>
+    </div>
+  `;
+}
+
+function findTickerWatchlistItem(ticker) {
+  return state.watchlist.find(
+    (item) => String(item.symbol || "").toUpperCase() === String(ticker || "").toUpperCase()
+  );
+}
+
+function findTickerMoverItem(ticker) {
+  return state.movers.find(
+    (item) => String(item.symbol || "").toUpperCase() === String(ticker || "").toUpperCase()
+  );
+}
+
+function buildTickerNarrative(ticker, mover, watch) {
+  const t = String(ticker || "").toUpperCase();
+
+  if (["NVDA", "AMD", "INTC", "TSM", "TSMC"].includes(t)) {
+    return state.mode === "trader" ? "AI / semis trade" : "AI / semiconductor jobs";
+  }
+
+  if (["MSFT", "GOOGL", "GOOG", "META", "AMZN"].includes(t)) {
+    return state.mode === "trader" ? "Mega-cap AI narrative" : "Big Tech hiring lens";
+  }
+
+  if (["TSLA"].includes(t)) {
+    return state.mode === "trader" ? "EV / momentum risk" : "Auto / engineering lens";
+  }
+
+  if (["COIN"].includes(t)) {
+    return state.mode === "trader" ? "Crypto beta trade" : "Fintech / crypto jobs";
+  }
+
+  if (mover) {
+    if (Number(mover.changePercent) > 0) return "Positive momentum";
+    if (Number(mover.changePercent) < 0) return "Negative pressure";
+  }
+
+  if (watch) return "Radar tracking";
+  return "Custom ticker";
+}
+
 async function loadAllData() {
   await Promise.allSettled([
     loadSignals(),
@@ -133,7 +397,13 @@ async function loadAllData() {
     loadWatchlist()
   ]);
 
+  renderAll();
+}
+
+function renderAll() {
   renderHeroStats();
+  renderDailyBrief();
+  renderTopOpportunities();
   renderLiveAlerts();
   renderSignals();
   renderCompanyRiskBoard();
@@ -152,7 +422,8 @@ async function loadAllData() {
   renderConflictImpact();
   renderRiskFeed();
   renderJobsFeed();
-  renderDailyBrief();
+  updateTickerSummary();
+  renderTickerIntelligence();
 }
 
 async function fetchJson(url) {
@@ -224,16 +495,45 @@ async function loadWatchlist() {
 }
 
 function renderHeroStats() {
-  const companies = buildCompanyRiskScores();
-  const highRisk = companies.filter((c) => c.score >= 70).length;
-  const hiring = buildHiringShiftData().length;
+  const board = buildCompanyRiskScores();
+  const highRisk = board.filter((c) => c.score >= 70).length;
+  const healthier = board.filter((c) => c.score < 50).length;
   const aiCount = state.ai.length || fallbackAI().length;
   const riskCount = [...state.news, ...state.ai].filter(containsRiskKeywords).length || 4;
 
   setText("statHighRisk", String(highRisk));
-  setText("statHiring", String(hiring));
+  setText("statHealthier", String(healthier));
   setText("statAI", String(aiCount));
   setText("statRisk", String(riskCount));
+}
+
+function renderDailyBrief() {
+  const container = document.getElementById("dailyBrief");
+  if (!container) return;
+
+  const brief = buildDailyBrief();
+  container.innerHTML = brief.map((item) => `
+    <div class="brief-item">
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="feed-summary">${escapeHtml(item.summary)}</div>
+    </div>
+  `).join("");
+}
+
+function renderTopOpportunities() {
+  const container = document.getElementById("topOpportunities");
+  if (!container) return;
+
+  const items = buildTopOpportunities();
+  container.innerHTML = items.map((item) => `
+    <div class="opportunity-item">
+      <div class="opportunity-top">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span class="opportunity-tag ${item.className}">${escapeHtml(item.label)}</span>
+      </div>
+      <div class="feed-summary">${escapeHtml(item.summary)}</div>
+    </div>
+  `).join("");
 }
 
 function renderLiveAlerts() {
@@ -279,6 +579,11 @@ function renderSignals() {
         <span>${formatDate(signal.publishedAt || signal.date)}</span>
         <a class="why-link" href="#" data-signal-id="${escapeHtml(signal.id)}">Why it matters</a>
       </div>
+      <div class="signal-actions">
+        <button class="signal-drive-btn" data-drive-symbol="${escapeHtml(signal.relatedSymbol || suggestSymbolForSignal(signal))}">
+          Open in chart
+        </button>
+      </div>
     </article>
   `).join("");
 
@@ -288,6 +593,14 @@ function renderSignals() {
       const signalId = event.currentTarget.dataset.signalId;
       const signal = signals.find((item) => item.id === signalId);
       if (signal) openSignalModal(signal);
+    });
+  });
+
+  container.querySelectorAll(".signal-drive-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const symbol = event.currentTarget.dataset.driveSymbol || "NVDA";
+      applyTicker(symbol);
+      document.getElementById("tickerInput")?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   });
 }
@@ -301,7 +614,7 @@ function renderCompanyRiskBoard() {
     <div class="risk-row">
       <div>
         <strong>${escapeHtml(item.company)}</strong>
-        <div class="row-meta">${escapeHtml(item.status)}</div>
+        <div class="row-meta">${escapeHtml(modeStatusText(item))}</div>
       </div>
       <span class="risk-score-badge ${riskClass(item.score)}">Risk ${item.score}</span>
     </div>
@@ -353,7 +666,19 @@ function renderCompanyCards() {
   const container = document.getElementById("companyCards");
   if (!container) return;
 
-  const cards = buildCompanyCards();
+  let cards = buildCompanyCards();
+
+  if (state.companySearch) {
+    cards = cards.filter((item) =>
+      item.company.toLowerCase().includes(state.companySearch)
+    );
+  }
+
+  if (!cards.length) {
+    container.innerHTML = `<div class="empty-state">No companies match your search.</div>`;
+    return;
+  }
+
   container.innerHTML = cards.map((item) => `
     <div class="company-card">
       <div class="company-top">
@@ -367,12 +692,12 @@ function renderCompanyCards() {
           <div class="metric-value">${item.riskScore}</div>
         </div>
         <div class="metric-box">
-          <div class="metric-label">Hiring Trend</div>
-          <div class="metric-value">${escapeHtml(item.hiringTrend)}</div>
+          <div class="metric-label">${state.mode === "jobseeker" ? "Hiring Trend" : "Market Bias"}</div>
+          <div class="metric-value">${escapeHtml(item.midMetric)}</div>
         </div>
         <div class="metric-box">
-          <div class="metric-label">Signal Type</div>
-          <div class="metric-value">${escapeHtml(item.signalType)}</div>
+          <div class="metric-label">${state.mode === "jobseeker" ? "Signal Type" : "Trade Lens"}</div>
+          <div class="metric-value">${escapeHtml(item.endMetric)}</div>
         </div>
       </div>
     </div>
@@ -506,19 +831,6 @@ function renderJobsFeed() {
   renderFeed("jobsFeed", state.jobs);
 }
 
-function renderDailyBrief() {
-  const container = document.getElementById("dailyBrief");
-  if (!container) return;
-
-  const brief = buildDailyBrief();
-  container.innerHTML = brief.map((item) => `
-    <div class="brief-item">
-      <strong>${escapeHtml(item.title)}</strong>
-      <div class="feed-summary">${escapeHtml(item.summary)}</div>
-    </div>
-  `).join("");
-}
-
 function renderFeed(targetId, items) {
   const container = document.getElementById(targetId);
   if (!container) return;
@@ -548,7 +860,8 @@ function buildCombinedSignals() {
     score: scoreArticle(item, "jobs"),
     impactPoints: buildImpactPoints(item),
     watchPoints: buildWatchPoints(item),
-    confidence: deriveConfidence(scoreArticle(item, "jobs"))
+    confidence: deriveConfidence(scoreArticle(item, "jobs")),
+    relatedSymbol: suggestSymbolForSignal(item, "jobs")
   }));
 
   const derivedMarkets = state.news.slice(0, 4).map((item, idx) => ({
@@ -558,7 +871,8 @@ function buildCombinedSignals() {
     score: scoreArticle(item, "market"),
     impactPoints: buildImpactPoints(item),
     watchPoints: buildWatchPoints(item),
-    confidence: deriveConfidence(scoreArticle(item, "market"))
+    confidence: deriveConfidence(scoreArticle(item, "market")),
+    relatedSymbol: suggestSymbolForSignal(item, "market")
   }));
 
   const derivedAI = state.ai.slice(0, 4).map((item, idx) => ({
@@ -568,7 +882,8 @@ function buildCombinedSignals() {
     score: scoreArticle(item, "ai"),
     impactPoints: buildImpactPoints(item),
     watchPoints: buildWatchPoints(item),
-    confidence: deriveConfidence(scoreArticle(item, "ai"))
+    confidence: deriveConfidence(scoreArticle(item, "ai")),
+    relatedSymbol: suggestSymbolForSignal(item, "ai")
   }));
 
   const derivedRisk = [...state.news, ...state.ai]
@@ -581,7 +896,8 @@ function buildCombinedSignals() {
       score: scoreArticle(item, "risk"),
       impactPoints: buildImpactPoints(item),
       watchPoints: buildWatchPoints(item),
-      confidence: deriveConfidence(scoreArticle(item, "risk"))
+      confidence: deriveConfidence(scoreArticle(item, "risk")),
+      relatedSymbol: suggestSymbolForSignal(item, "risk")
     }));
 
   return [...state.signals, ...derivedJobs, ...derivedMarkets, ...derivedAI, ...derivedRisk]
@@ -628,30 +944,56 @@ function buildCompanyRiskScores() {
 }
 
 function buildCompanyCards() {
-  const base = buildCompanyRiskScores();
-  return base.map((item) => {
+  return buildCompanyRiskScores().map((item) => {
     const riskLabel = item.score >= 75 ? "High Risk" : item.score >= 50 ? "Watch" : "Healthier";
-    const hiringTrend = item.score >= 75 ? "Weak" : item.score >= 50 ? "Mixed" : "Better";
-    const signalType = item.score >= 75 ? "Layoffs / pressure" : item.score >= 50 ? "Restructuring" : "AI / stability";
-    const summary =
-      item.score >= 75
-        ? `${item.company} looks more exposed to layoffs, cost pressure, or hiring caution.`
-        : item.score >= 50
-          ? `${item.company} shows mixed signals and deserves monitoring.`
-          : `${item.company} looks better positioned relative to pressured peers.`;
+
+    let summary;
+    let midMetric;
+    let endMetric;
+
+    if (state.mode === "jobseeker") {
+      midMetric = item.score >= 75 ? "Weak" : item.score >= 50 ? "Mixed" : "Better";
+      endMetric = item.score >= 75 ? "Layoffs / pressure" : item.score >= 50 ? "Restructuring" : "AI / stability";
+      summary =
+        item.score >= 75
+          ? `${item.company} looks more exposed to layoffs, hiring caution, or restructuring.`
+          : item.score >= 50
+            ? `${item.company} shows mixed signals and deserves monitoring for job seekers.`
+            : `${item.company} looks relatively healthier and more attractive for job seekers.`;
+    } else {
+      midMetric = item.score >= 75 ? "Bearish" : item.score >= 50 ? "Mixed" : "Constructive";
+      endMetric = item.score >= 75 ? "Pressure story" : item.score >= 50 ? "Watch setup" : "Stronger narrative";
+      summary =
+        item.score >= 75
+          ? `${item.company} carries a weaker narrative with more pressure than peers.`
+          : item.score >= 50
+            ? `${item.company} has a mixed narrative that could swing with new headlines.`
+            : `${item.company} looks relatively stronger in the current narrative set.`;
+    }
 
     return {
       company: item.company,
       riskScore: item.score,
       riskLabel,
-      hiringTrend,
-      signalType,
+      midMetric,
+      endMetric,
       summary
     };
   });
 }
 
 function buildSectorHeatmapData() {
+  if (state.mode === "trader") {
+    return [
+      { sector: "AI Infrastructure", note: "Strong compute and capex narrative support.", label: "Bullish", className: "level-positive" },
+      { sector: "Semiconductors", note: "Demand is strong, but export-policy sensitivity remains.", label: "Mixed", className: "level-mixed" },
+      { sector: "Energy", note: "Geopolitical pressure can drive upside volatility.", label: "Watch Up", className: "level-medium" },
+      { sector: "Consumer Tech", note: "Depends more on sentiment and rates.", label: "Mixed", className: "level-mixed" },
+      { sector: "Fintech", note: "Efficiency narratives still pressure confidence.", label: "Weak", className: "level-high" },
+      { sector: "Cloud Platforms", note: "AI demand remains supportive.", label: "Constructive", className: "level-low" }
+    ];
+  }
+
   return [
     { sector: "AI Infrastructure", note: "GPU and cloud buildout remain supportive.", label: "Hiring", className: "level-positive" },
     { sector: "Semiconductors", note: "Strong demand but policy and supply-chain sensitivity remain.", label: "Mixed", className: "level-mixed" },
@@ -672,6 +1014,27 @@ function buildLayoffTimeline() {
 }
 
 function buildHiringShiftData() {
+  if (state.mode === "trader") {
+    return [
+      {
+        title: "Layoffs at weaker tech names → talent and attention shift to stronger operators",
+        summary: "Narrative leadership often migrates to companies with better AI or infrastructure positioning."
+      },
+      {
+        title: "Semiconductor demand strength → supports AI-linked winners",
+        summary: "Names tied to accelerators, foundries, and cloud capex can benefit from stronger demand stories."
+      },
+      {
+        title: "Geopolitical pressure → favors selective sectors",
+        summary: "Energy, defense-adjacent, and resilient infrastructure themes can strengthen under pressure."
+      },
+      {
+        title: "Mixed macro → rotation matters more than broad optimism",
+        summary: "A sharper product should explain which theme looks stronger, not just list headlines."
+      }
+    ];
+  }
+
   return [
     {
       title: "Semiconductor layoffs → talent may shift to NVIDIA, AMD, TSMC ecosystem",
@@ -786,20 +1149,233 @@ function buildDailyBrief() {
   const healthiest = companies[companies.length - 1];
   const signals = buildCombinedSignals().slice(0, 3);
 
+  const modeIntro = state.mode === "jobseeker"
+    ? {
+        title: "Mode: Job Seeker",
+        summary: "Use this view to spot healthier companies, watch layoffs, and follow where talent may move next."
+      }
+    : {
+        title: "Mode: Trader",
+        summary: "Use this view to connect company pressure, AI demand, and geopolitical risk to market narratives."
+      };
+
   return [
+    modeIntro,
     {
       title: `Highest pressure today: ${highest.company}`,
-      summary: `${highest.company} currently shows the strongest negative pressure in the board with a risk score of ${highest.score}.`
+      summary: `${highest.company} currently shows the strongest negative pressure with a risk score of ${highest.score}.`
     },
     {
       title: `Healthier relative name: ${healthiest.company}`,
-      summary: `${healthiest.company} looks better positioned versus peers in the current feed.`
+      summary: `${healthiest.company} looks better positioned versus peers in the current board.`
     },
     ...signals.map((item) => ({
       title: item.title,
       summary: `${formatCategory(item.category)} • Score ${item.score}`
     }))
   ].slice(0, 5);
+}
+
+function buildTopOpportunities() {
+  if (state.mode === "trader") {
+    return [
+      {
+        title: "NVIDIA",
+        summary: "AI infrastructure demand remains one of the strongest narratives in the market.",
+        label: "Bullish",
+        className: "level-positive"
+      },
+      {
+        title: "AMD",
+        summary: "Second-derivative AI / semiconductor beneficiary with narrative upside.",
+        label: "Constructive",
+        className: "level-low"
+      },
+      {
+        title: "Energy names",
+        summary: "Geopolitical risk can create upside volatility when oil sensitivity rises.",
+        label: "Watch",
+        className: "level-medium"
+      }
+    ];
+  }
+
+  return [
+    {
+      title: "NVIDIA",
+      summary: "Strong AI demand and infrastructure momentum make it a healthier narrative for job seekers.",
+      label: "Hiring Lens",
+      className: "level-positive"
+    },
+    {
+      title: "AMD",
+      summary: "AI and semiconductor strength support better relative positioning.",
+      label: "Healthier",
+      className: "level-low"
+    },
+    {
+      title: "Microsoft",
+      summary: "Large platform plus AI momentum makes it a strong company to track.",
+      label: "Stable",
+      className: "level-mixed"
+    }
+  ];
+}
+
+function buildTickerIntelligence(ticker) {
+  const t = String(ticker || "").toUpperCase();
+  const points = [];
+
+  if (["NVDA", "AMD"].includes(t)) {
+    points.push({
+      title: `${t} is tied directly to AI infrastructure demand`,
+      note: "GPU, accelerator, and cloud capex narratives are central to why this ticker matters."
+    });
+    points.push({
+      title: "Semiconductor sentiment remains important",
+      note: "Policy headlines, export restrictions, and foundry concentration can move this theme quickly."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Momentum matters here" : "Job-market relevance is high here",
+      note: state.mode === "trader"
+        ? "This is one of the strongest narrative-driven names in the current market."
+        : "AI / hardware demand can support stronger hiring and healthier company positioning."
+    });
+  } else if (["MSFT", "GOOGL", "GOOG", "META", "AMZN"].includes(t)) {
+    points.push({
+      title: `${t} sits inside the mega-cap AI race`,
+      note: "Cloud, inference, AI products, and capex all affect this ticker’s narrative."
+    });
+    points.push({
+      title: "Hiring and platform strength matter",
+      note: "For job seekers, healthier platforms often offer stronger opportunity than pressured peers."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Narrative quality is key" : "Company stability is key",
+      note: state.mode === "trader"
+        ? "The market often rewards the strongest AI deployment story among large platforms."
+        : "Big Tech platform stability can matter more than one headline."
+    });
+  } else if (t === "TSLA") {
+    points.push({
+      title: "Tesla mixes growth with volatility",
+      note: "Auto demand, regulatory scrutiny, and sentiment shifts can all change the setup fast."
+    });
+    points.push({
+      title: "This is a headline-sensitive ticker",
+      note: "Good for tracking narrative swings, but it can be unstable."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Expect momentum behavior" : "Engineering lens is more relevant",
+      note: state.mode === "trader"
+        ? "Momentum and sentiment often dominate near-term behavior."
+        : "Useful for people tracking autonomy, validation, and automotive engineering signals."
+    });
+  } else if (t === "COIN") {
+    points.push({
+      title: "COIN maps well to crypto workforce and sentiment stories",
+      note: "Layoffs or crypto demand changes can make this relevant quickly."
+    });
+    points.push({
+      title: "This is a high-beta narrative ticker",
+      note: "It moves more on sentiment than on steady defensiveness."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Volatility is the point" : "Hiring pressure matters here",
+      note: state.mode === "trader"
+        ? "Useful when you want a sentiment-sensitive chart."
+        : "Useful when tracking crypto/fintech workforce pressure."
+    });
+  } else {
+    points.push({
+      title: `${t} is being tracked as a custom ticker`,
+      note: "Use the chart plus related market signals to decide whether this belongs in your focus list."
+    });
+    points.push({
+      title: "Context matters more than the chart alone",
+      note: "The product is stronger when price action is tied to jobs, AI, or geopolitical narratives."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Look for momentum + narrative" : "Look for company health + stability",
+      note: state.mode === "trader"
+        ? "A chart becomes more useful when the narrative is clear."
+        : "A company becomes more useful when the opportunity looks healthier."
+    });
+  }
+
+  return { points };
+}
+
+function buildTickerAction(ticker) {
+  const t = String(ticker || "").toUpperCase();
+
+  if (state.mode === "trader") {
+    if (["NVDA", "AMD", "MSFT"].includes(t)) {
+      return {
+        title: "Constructive setup",
+        label: "Opportunity",
+        className: "level-positive",
+        copy: "Strong AI-linked narrative. Best used as a watch / opportunity ticker while momentum and AI demand remain supportive."
+      };
+    }
+    if (["TSLA", "COIN"].includes(t)) {
+      return {
+        title: "Volatility watch",
+        label: "Watch",
+        className: "level-medium",
+        copy: "This ticker can move hard on narrative swings. Better treated as a high-volatility watchlist name."
+      };
+    }
+    return {
+      title: "Context first",
+      label: "Monitor",
+      className: "level-mixed",
+      copy: "Use this chart with related signals before treating it as a stronger trade setup."
+    };
+  }
+
+  if (["NVDA", "AMD", "MSFT", "GOOGL", "AMZN"].includes(t)) {
+    return {
+      title: "Healthier company lens",
+      label: "Apply / Track",
+      className: "level-positive",
+      copy: "This looks better as a healthier company to track for roles, stability, and longer-term opportunity."
+    };
+  }
+  if (["TSLA", "INTC", "COIN"].includes(t)) {
+    return {
+      title: "Pressure or mixed lens",
+      label: "Watch Risk",
+      className: "level-medium",
+      copy: "Useful to monitor, but the narrative looks more mixed and may need more caution for job seekers."
+    };
+  }
+  return {
+    title: "Research deeper",
+    label: "Monitor",
+    className: "level-mixed",
+    copy: "Not enough direct narrative support yet. Use company intelligence and related signals before prioritizing it."
+  };
+}
+
+function suggestSymbolForSignal(signal, fallbackCategory = "") {
+  const text = `${signal.title} ${signal.summary}`.toLowerCase();
+
+  if (text.includes("nvidia") || text.includes("gpu")) return "NVDA";
+  if (text.includes("amd")) return "AMD";
+  if (text.includes("microsoft")) return "MSFT";
+  if (text.includes("google") || text.includes("alphabet")) return "GOOGL";
+  if (text.includes("amazon")) return "AMZN";
+  if (text.includes("meta")) return "META";
+  if (text.includes("tesla")) return "TSLA";
+  if (text.includes("intel")) return "INTC";
+  if (text.includes("crypto.com") || text.includes("crypto")) return "COIN";
+  if (text.includes("oil") || text.includes("middle east") || text.includes("iran") || text.includes("israel")) return "XOM";
+
+  if (fallbackCategory === "ai") return "NVDA";
+  if (fallbackCategory === "jobs") return "MSFT";
+  if (fallbackCategory === "risk") return "XOM";
+  return "NVDA";
 }
 
 function buildImpactPoints(signal) {
@@ -874,6 +1450,15 @@ function scoreArticle(item, category) {
   return Math.max(50, Math.min(94, score));
 }
 
+function modeStatusText(item) {
+  if (state.mode === "trader") {
+    if (item.score >= 75) return "Pressure narrative / weaker setup";
+    if (item.score >= 50) return "Mixed setup / watch";
+    return "Stronger narrative support";
+  }
+  return item.status;
+}
+
 function normalizeSignal(item, defaultCategory) {
   return {
     id: item.id || createId(item.title),
@@ -885,7 +1470,8 @@ function normalizeSignal(item, defaultCategory) {
     publishedAt: item.publishedAt || item.date || new Date().toISOString(),
     impactPoints: item.impactPoints || [],
     watchPoints: item.watchPoints || [],
-    confidence: item.confidence || deriveConfidence(Number(item.score) || 70)
+    confidence: item.confidence || deriveConfidence(Number(item.score) || 70),
+    relatedSymbol: item.relatedSymbol || suggestSymbolForSignal(item, defaultCategory)
   };
 }
 
@@ -896,7 +1482,8 @@ function normalizeNews(item, defaultCategory) {
     summary: item.summary || item.description || item.snippet || "No summary available.",
     category: item.category || defaultCategory,
     url: item.url || item.link || "#",
-    publishedAt: item.publishedAt || item.date || new Date().toISOString()
+    publishedAt: item.publishedAt || item.date || new Date().toISOString(),
+    relatedSymbol: item.relatedSymbol || suggestSymbolForSignal(item, defaultCategory)
   };
 }
 
@@ -925,7 +1512,8 @@ function fallbackSignals() {
       category: "jobs",
       score: 80,
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "COIN"
     },
     {
       id: "fallback-signal-2",
@@ -934,7 +1522,8 @@ function fallbackSignals() {
       category: "risk",
       score: 82,
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "XOM"
     },
     {
       id: "fallback-signal-3",
@@ -943,7 +1532,8 @@ function fallbackSignals() {
       category: "ai",
       score: 84,
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "NVDA"
     }
   ];
 }
@@ -954,7 +1544,8 @@ function fallbackNews() {
       title: "Oil and market volatility remain sensitive to conflict headlines",
       summary: "Global risk narratives continue to shape short-term market reactions.",
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "XOM"
     }
   ];
 }
@@ -965,13 +1556,15 @@ function fallbackJobs() {
       title: "Crypto.com lays off 12% of workforce",
       summary: "The company says the move reflects a changing operating environment.",
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "COIN"
     },
     {
       title: "Tech restructuring extends into another quarter",
       summary: "Hiring caution remains in selected sectors despite strength in AI.",
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "MSFT"
     }
   ];
 }
@@ -982,7 +1575,8 @@ function fallbackAI() {
       title: "NVIDIA and hyperscaler demand keep AI infrastructure story strong",
       summary: "GPU and cloud demand remain central to AI expansion.",
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "NVDA"
     }
   ];
 }
@@ -1011,7 +1605,8 @@ function fallbackRiskFeed() {
       title: "Regional instability keeps commodities and transport markets alert",
       summary: "Investors continue tracking spillover effects into oil and logistics.",
       url: "#",
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date().toISOString(),
+      relatedSymbol: "XOM"
     }
   ];
 }

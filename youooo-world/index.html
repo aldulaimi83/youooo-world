@@ -11,7 +11,7 @@
     <header class="topbar">
       <div class="brand-block">
         <div class="brand">YOUOOO RADAR</div>
-        <div class="subtitle">Layoff risk, hiring shifts, AI demand, and market signals</div>
+        <div class="subtitle">Company intelligence for layoffs, hiring shifts, AI demand, and market reaction</div>
       </div>
 
       <nav class="top-nav">
@@ -24,7 +24,7 @@
 
       <div class="topbar-right">
         <div class="status-pill online">STATUS: LIVE</div>
-        <div class="status-pill gold">PRODUCT: V5</div>
+        <div class="status-pill premium">PRODUCT: V6</div>
         <div class="status-pill" id="updatedAt">UPDATED: --</div>
       </div>
     </header>
@@ -32,20 +32,26 @@
     <main class="page-shell">
       <section class="hero">
         <div class="hero-main card">
-          <div class="hero-kicker">CORE PRODUCT</div>
+          <div class="hero-kicker">CLEAR PRODUCT</div>
           <h1>Layoff Radar + Hiring Shift Intelligence</h1>
           <p class="hero-copy">
-            Track which companies look pressured, where hiring is still strong, and how job-market shifts connect to AI and market narratives.
+            See which companies look pressured, who still has momentum, and how layoffs, AI demand, and geopolitics connect to markets and hiring.
           </p>
 
-          <div class="hero-stats" id="heroStats">
+          <div class="hero-actions">
+            <button class="mode-btn active" data-mode="jobseeker" id="jobSeekerModeBtn">Job Seeker Mode</button>
+            <button class="mode-btn" data-mode="trader" id="traderModeBtn">Trader Mode</button>
+            <button class="mode-btn ghost" id="alertsBtn">Premium Alerts</button>
+          </div>
+
+          <div class="hero-stats">
             <div class="stat-card">
               <div class="stat-label">High Risk Companies</div>
               <div class="stat-value" id="statHighRisk">--</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Hiring Opportunities</div>
-              <div class="stat-value" id="statHiring">--</div>
+              <div class="stat-label">Healthier Names</div>
+              <div class="stat-value" id="statHealthier">--</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">AI Demand Signals</div>
@@ -56,21 +62,117 @@
               <div class="stat-value" id="statRisk">--</div>
             </div>
           </div>
+
+          <div class="stock-explorer">
+            <div class="stock-explorer-head">
+              <div>
+                <div class="hero-kicker">STOCK EXPLORER</div>
+                <h3 class="stock-explorer-title">Live Chart + Ticker Intelligence</h3>
+                <p class="stock-explorer-copy">
+                  Search a ticker and view a live chart with a real narrative, not just price action.
+                </p>
+              </div>
+
+              <div class="stock-controls">
+                <input
+                  id="tickerInput"
+                  class="ticker-input"
+                  type="text"
+                  placeholder="Enter ticker: NVDA, AMD, TSLA..."
+                  value="NVDA"
+                />
+                <button id="loadTickerBtn" class="ticker-load-btn">Load</button>
+              </div>
+            </div>
+
+            <div class="quick-tickers">
+              <button class="quick-ticker-btn" data-symbol="NVDA">NVDA</button>
+              <button class="quick-ticker-btn" data-symbol="AMD">AMD</button>
+              <button class="quick-ticker-btn" data-symbol="MSFT">MSFT</button>
+              <button class="quick-ticker-btn" data-symbol="TSLA">TSLA</button>
+              <button class="quick-ticker-btn" data-symbol="GOOGL">GOOGL</button>
+              <button class="quick-ticker-btn" data-symbol="AMZN">AMZN</button>
+              <button class="quick-ticker-btn" data-symbol="META">META</button>
+              <button class="quick-ticker-btn" data-symbol="INTC">INTC</button>
+            </div>
+
+            <div id="stockSummaryBar" class="stock-summary-bar">
+              <div class="stock-mini-card">
+                <div class="stock-mini-label">Selected</div>
+                <div class="stock-mini-value">NVDA</div>
+              </div>
+              <div class="stock-mini-card">
+                <div class="stock-mini-label">Watchlist</div>
+                <div class="stock-mini-value">Waiting...</div>
+              </div>
+              <div class="stock-mini-card">
+                <div class="stock-mini-label">Mode Lens</div>
+                <div class="stock-mini-value">Job Seeker</div>
+              </div>
+              <div class="stock-mini-card">
+                <div class="stock-mini-label">Narrative</div>
+                <div class="stock-mini-value">AI / semis</div>
+              </div>
+            </div>
+
+            <div id="tvChartWidget" class="tv-chart-widget"></div>
+
+            <div class="ticker-intelligence-grid">
+              <div class="ticker-intel-card">
+                <div class="section-headline-row">
+                  <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
+                  <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
+                </div>
+                <div id="tickerWhyMatters" class="intel-list">
+                  <div class="empty-state">Building ticker intelligence...</div>
+                </div>
+              </div>
+
+              <div class="ticker-intel-card">
+                <div class="section-headline-row">
+                  <h3>Suggested Action</h3>
+                  <span class="trend-pill warning">Decision Layer</span>
+                </div>
+                <div id="tickerActionBox" class="action-box">
+                  <div class="empty-state">Building action guidance...</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="hero-side card">
           <div class="section-headline-row">
-            <h2>What changed today</h2>
-            <span class="trend-pill danger">Action Feed</span>
+            <h2>Daily Brief</h2>
+            <span class="trend-pill gold">Use This First</span>
           </div>
-          <div id="liveAlerts" class="alerts-list">
-            <div class="empty-state">Loading daily changes...</div>
+          <div id="dailyBrief" class="brief-list">
+            <div class="empty-state">Building daily brief...</div>
           </div>
         </div>
       </section>
 
       <section class="dashboard-grid">
         <div class="main-column">
+          <div class="card sticky-mini-bar">
+            <div class="mini-toolbar">
+              <div class="search-wrap">
+                <input
+                  id="companySearch"
+                  class="search-input"
+                  type="text"
+                  placeholder="Search company: Intel, AMD, NVIDIA, Tesla..."
+                />
+              </div>
+              <div class="toolbar-pills">
+                <span class="tiny-pill">Tech Jobs</span>
+                <span class="tiny-pill">AI Infra</span>
+                <span class="tiny-pill">Semis</span>
+                <span class="tiny-pill">Macro Risk</span>
+              </div>
+            </div>
+          </div>
+
           <nav class="tabs">
             <button class="tab-btn active" data-tab="overviewTab">Overview</button>
             <button class="tab-btn" data-tab="companiesTab">Companies</button>
@@ -80,10 +182,32 @@
           </nav>
 
           <section id="overviewTab" class="tab-content active">
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Top Opportunities Today</h2>
+                  <span class="trend-pill success">Most Shareable</span>
+                </div>
+                <div id="topOpportunities" class="opportunities-list">
+                  <div class="empty-state">Building opportunities...</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Action Feed</h2>
+                  <span class="trend-pill gold">Today</span>
+                </div>
+                <div id="liveAlerts" class="alerts-list">
+                  <div class="empty-state">Loading action feed...</div>
+                </div>
+              </div>
+            </div>
+
             <div class="card">
               <div class="section-headline-row">
                 <h2>Top Signals Now</h2>
-                <span class="trend-pill neutral">Ranked Feed</span>
+                <span class="trend-pill neutral">Click To Drive Chart</span>
               </div>
 
               <div class="signal-filters" id="signalFilters">
@@ -103,7 +227,7 @@
               <div class="card">
                 <div class="section-headline-row">
                   <h2>Company Risk Scoreboard</h2>
-                  <span class="trend-pill warning">Most Important</span>
+                  <span class="trend-pill danger">What To Watch</span>
                 </div>
                 <div id="companyRiskBoard" class="risk-board">
                   <div class="empty-state">Building company risk board...</div>
@@ -112,7 +236,7 @@
 
               <div class="card">
                 <div class="section-headline-row">
-                  <h2>Who Is Hiring Instead</h2>
+                  <h2>Where Talent Is Moving</h2>
                   <span class="trend-pill success">Opportunity</span>
                 </div>
                 <div id="hiringShift" class="shift-list">
@@ -135,7 +259,7 @@
               <div class="card">
                 <div class="section-headline-row">
                   <h2>Layoff Timeline</h2>
-                  <span class="trend-pill danger">Pressure</span>
+                  <span class="trend-pill warning">Pressure</span>
                 </div>
                 <div id="layoffTimeline" class="timeline">
                   <div class="empty-state">Loading timeline...</div>
@@ -148,14 +272,14 @@
             <div class="card">
               <div class="section-headline-row">
                 <h2>Company Intelligence</h2>
-                <span class="trend-pill gold">Sellable Direction</span>
+                <span class="trend-pill gold">Most Valuable Page</span>
               </div>
               <p class="card-subtitle">
-                A company-first view is what makes the product useful. This is where people quickly see risk, momentum, and where talent is likely moving.
+                This is the part that can become a real product: one place to quickly understand which companies look risky, resilient, or worth tracking.
               </p>
 
               <div id="companyCards" class="company-cards">
-                <div class="empty-state">Building company intelligence cards...</div>
+                <div class="empty-state">Building company cards...</div>
               </div>
             </div>
           </section>
@@ -189,14 +313,14 @@
                 <span class="trend-pill warning">Why Markets Move</span>
               </div>
               <div id="impactEngine" class="impact-grid">
-                <div class="empty-state">Building market impact engine...</div>
+                <div class="empty-state">Building impact engine...</div>
               </div>
             </div>
 
             <div class="card">
               <div class="section-headline-row">
                 <h2>Market Feed</h2>
-                <span class="trend-pill neutral">News</span>
+                <span class="trend-pill neutral">Live Feed</span>
               </div>
               <div id="marketNews" class="news-feed">
                 <div class="empty-state">Loading market feed...</div>
@@ -246,7 +370,7 @@
                   <span class="trend-pill danger">Global Risk</span>
                 </div>
                 <div id="regionalRiskBoard" class="risk-regions">
-                  <div class="empty-state">Loading regional risk levels...</div>
+                  <div class="empty-state">Loading regional risk...</div>
                 </div>
               </div>
 
@@ -274,16 +398,6 @@
         </div>
 
         <aside class="side-column">
-          <div class="card sticky-card">
-            <div class="section-headline-row">
-              <h2>Daily Brief</h2>
-              <span class="trend-pill gold">Summary</span>
-            </div>
-            <div id="dailyBrief" class="brief-list">
-              <div class="empty-state">Building daily brief...</div>
-            </div>
-          </div>
-
           <div class="card">
             <div class="section-headline-row">
               <h2>Jobs Feed</h2>
@@ -292,6 +406,15 @@
             <div id="jobsFeed" class="news-feed compact-feed">
               <div class="empty-state">Loading jobs feed...</div>
             </div>
+          </div>
+
+          <div class="card premium-card">
+            <div class="premium-kicker">MONETIZATION</div>
+            <h3>Premium Alerts</h3>
+            <p>
+              Track company risk changes, layoffs, AI demand shifts, and market impact in one place.
+            </p>
+            <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
           </div>
         </aside>
       </section>
@@ -338,6 +461,27 @@
     </div>
   </div>
 
+  <div id="premiumModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="premiumBackdrop"></div>
+    <div class="modal-dialog premium-dialog" role="dialog" aria-modal="true" aria-labelledby="premiumTitle">
+      <button class="modal-close" id="closePremiumBtn" aria-label="Close">×</button>
+      <div class="modal-kicker">PREMIUM</div>
+      <h2 id="premiumTitle">Premium Alerts</h2>
+      <p class="card-subtitle">
+        This can later become email alerts, saved watchlists, company tracking, and subscriptions.
+      </p>
+      <div class="premium-feature-list">
+        <div class="premium-feature">Company risk alerts</div>
+        <div class="premium-feature">Layoff detection</div>
+        <div class="premium-feature">Hiring momentum changes</div>
+        <div class="premium-feature">AI / chip demand shifts</div>
+        <div class="premium-feature">Market impact alerts</div>
+        <div class="premium-feature">Saved watchlists</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://s3.tradingview.com/tv.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
