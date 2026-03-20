@@ -156,6 +156,14 @@ function bindTheme() {
       "youooo_theme",
       document.body.classList.contains("light") ? "light" : "dark"
     );
+
+    if (appState.currentCandles.length) {
+      renderChart("marketChart", appState.currentCandles, appState.currentSymbol);
+      const modal = document.getElementById("chartModal");
+      if (modal && !modal.classList.contains("hidden")) {
+        renderChart("marketChartExpanded", appState.currentCandles, appState.currentSymbol);
+      }
+    }
   });
 }
 
@@ -172,9 +180,7 @@ function bindSearch() {
     }
 
     const matches = appState.searchData
-      .filter((item) =>
-        item.label.toLowerCase().includes(q) || item.meta.toLowerCase().includes(q)
-      )
+      .filter((item) => item.label.toLowerCase().includes(q) || item.meta.toLowerCase().includes(q))
       .slice(0, 8);
 
     if (!matches.length) {
@@ -226,31 +232,46 @@ function bindSearch() {
     }
   });
 
-  document.getElementById("heroLoadBtn").addEventListener("click", () => {
-    document.querySelector('[data-tab="markets"]').click();
-    loadSymbol(appState.currentSymbol || "NVDA");
-  });
+  const heroBtn = document.getElementById("heroLoadBtn");
+  if (heroBtn) {
+    heroBtn.addEventListener("click", () => {
+      document.querySelector('[data-tab="markets"]').click();
+      loadSymbol(appState.currentSymbol || "NVDA");
+    });
+  }
 }
 
 function bindMarkets() {
-  document.getElementById("loadSymbolBtn").addEventListener("click", () => {
-    const symbol = document.getElementById("symbolInput").value.trim().toUpperCase() || "NVDA";
-    loadSymbol(symbol);
-  });
+  const loadBtn = document.getElementById("loadSymbolBtn");
+  const symbolInput = document.getElementById("symbolInput");
+  const expandBtn = document.getElementById("expandChartBtn");
+  const closeBtn = document.getElementById("closeModalBtn");
+  const backdrop = document.getElementById("modalBackdrop");
 
-  document.getElementById("symbolInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      loadSymbol(e.target.value.trim().toUpperCase() || "NVDA");
-    }
-  });
+  if (loadBtn) {
+    loadBtn.addEventListener("click", () => {
+      const symbol = (symbolInput?.value || "NVDA").trim().toUpperCase() || "NVDA";
+      loadSymbol(symbol);
+    });
+  }
 
-  document.getElementById("expandChartBtn").addEventListener("click", openChartModal);
-  document.getElementById("closeModalBtn").addEventListener("click", closeChartModal);
-  document.getElementById("modalBackdrop").addEventListener("click", closeChartModal);
+  if (symbolInput) {
+    symbolInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        loadSymbol(e.target.value.trim().toUpperCase() || "NVDA");
+      }
+    });
+  }
+
+  if (expandBtn) expandBtn.addEventListener("click", openChartModal);
+  if (closeBtn) closeBtn.addEventListener("click", closeChartModal);
+  if (backdrop) backdrop.addEventListener("click", closeChartModal);
 }
 
 function bindJobsFilter() {
   const input = document.getElementById("jobsSearch");
+  if (!input) return;
+
   input.addEventListener("input", () => {
     const q = input.value.trim().toLowerCase();
     if (!q) {
@@ -266,88 +287,107 @@ function bindJobsFilter() {
 }
 
 function bindAlerts() {
-  document.getElementById("localAlertForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const symbol = document.getElementById("alertSymbol").value.trim().toUpperCase();
-    const above = parseFloat(document.getElementById("alertAbove").value);
+  const localAlertForm = document.getElementById("localAlertForm");
+  const enableNotificationsBtn = document.getElementById("enableNotificationsBtn");
+  const runAlertCheckBtn = document.getElementById("runAlertCheckBtn");
+  const emailAlertForm = document.getElementById("emailAlertForm");
 
-    if (!symbol || Number.isNaN(above)) {
-      alert("Please enter a symbol and a valid trigger price.");
-      return;
-    }
+  if (localAlertForm) {
+    localAlertForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const symbol = document.getElementById("alertSymbol").value.trim().toUpperCase();
+      const above = parseFloat(document.getElementById("alertAbove").value);
 
-    appState.savedAlerts.push({
-      id: crypto.randomUUID(),
-      symbol,
-      above
-    });
-
-    persistAlerts();
-    renderSavedAlerts();
-    e.target.reset();
-    document.getElementById("alertSymbol").value = symbol;
-  });
-
-  document.getElementById("enableNotificationsBtn").addEventListener("click", async () => {
-    if (!("Notification" in window)) {
-      alert("This browser does not support notifications.");
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    alert(`Notification permission: ${permission}`);
-  });
-
-  document.getElementById("runAlertCheckBtn").addEventListener("click", async () => {
-    await checkAlertsNow();
-  });
-
-  document.getElementById("emailAlertForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const email = document.getElementById("emailInput").value.trim();
-    const symbol = document.getElementById("emailSymbol").value.trim().toUpperCase();
-    const alertType = document.getElementById("emailAlertType").value;
-    const status = document.getElementById("emailAlertStatus");
-
-    status.textContent = "Saving...";
-    status.className = "api-status muted";
-
-    try {
-      const res = await fetch(`${API_BASE}/api/alerts/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, symbol, alertType })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Unable to save email alert signup.");
+      if (!symbol || Number.isNaN(above)) {
+        alert("Please enter a symbol and a valid trigger price.");
+        return;
       }
 
-      status.textContent = "Saved. Signup recorded successfully.";
-      status.className = "api-status up";
+      appState.savedAlerts.push({
+        id: crypto.randomUUID(),
+        symbol,
+        above
+      });
+
+      persistAlerts();
+      renderSavedAlerts();
       e.target.reset();
-      document.getElementById("emailSymbol").value = symbol || "NVDA";
-    } catch (err) {
-      status.textContent = err.message;
-      status.className = "api-status down";
-    }
-  });
+      document.getElementById("alertSymbol").value = symbol;
+    });
+  }
+
+  if (enableNotificationsBtn) {
+    enableNotificationsBtn.addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        alert("This browser does not support notifications.");
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      alert(`Notification permission: ${permission}`);
+    });
+  }
+
+  if (runAlertCheckBtn) {
+    runAlertCheckBtn.addEventListener("click", async () => {
+      await checkAlertsNow();
+    });
+  }
+
+  if (emailAlertForm) {
+    emailAlertForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("emailInput").value.trim();
+      const symbol = document.getElementById("emailSymbol").value.trim().toUpperCase();
+      const alertType = document.getElementById("emailAlertType").value;
+      const status = document.getElementById("emailAlertStatus");
+
+      status.textContent = "Saving...";
+      status.className = "api-status muted";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/alerts/subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, symbol, alertType })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.ok === false) {
+          throw new Error(data.error || "Unable to save email alert signup.");
+        }
+
+        status.textContent = "Saved. Signup recorded successfully.";
+        status.className = "api-status up";
+        e.target.reset();
+        document.getElementById("emailSymbol").value = symbol || "NVDA";
+      } catch (err) {
+        status.textContent = err.message;
+        status.className = "api-status down";
+      }
+    });
+  }
 }
 
 async function loadTickers() {
-  const symbols = ["NVDA", "AMD", "AAPL", "MSFT", "TSLA", "AMZN"];
+  const symbols = ["NVDA", "AMD", "AAPL"];
   const row = document.getElementById("tickerRow");
+  if (!row) return;
+
   row.innerHTML = `<div class="muted">Loading watchlist...</div>`;
 
   try {
     const results = await Promise.all(
       symbols.map(async (symbol) => {
         const res = await fetch(`${API_BASE}/api/quote?symbol=${encodeURIComponent(symbol)}`);
-        if (!res.ok) throw new Error(`Failed: ${symbol}`);
         const data = await res.json();
+
+        if (!res.ok || data.ok === false) {
+          throw new Error(data.error || `Failed: ${symbol}`);
+        }
+
         return { symbol, data };
       })
     );
@@ -368,68 +408,103 @@ async function loadTickers() {
       .join("");
   } catch (err) {
     console.error(err);
-    row.innerHTML = `<div class="down">Could not load watchlist. Check backend API and CORS.</div>`;
+    row.innerHTML = `<div class="down">Watchlist partially unavailable right now.</div>`;
   }
 }
 
 async function loadSymbol(symbol) {
   const status = document.getElementById("quoteStatus");
-  status.textContent = "Loading...";
+  const chartMessage = document.getElementById("chartMessage");
+
+  if (status) status.textContent = "Loading...";
+  if (chartMessage) chartMessage.textContent = "";
+
   appState.currentSymbol = symbol;
 
+  let quote = null;
+  let candles = null;
+  let quoteError = null;
+  let candlesError = null;
+
   try {
-    const [quoteRes, candleRes] = await Promise.all([
-      fetch(`${API_BASE}/api/quote?symbol=${encodeURIComponent(symbol)}`),
-      fetch(`${API_BASE}/api/candles?symbol=${encodeURIComponent(symbol)}`)
-    ]);
+    const quoteRes = await fetch(`${API_BASE}/api/quote?symbol=${encodeURIComponent(symbol)}`);
+    const quoteData = await quoteRes.json();
 
-    const quote = await quoteRes.json();
-    const candles = await candleRes.json();
-
-    if (!quoteRes.ok) {
-      throw new Error(quote.error || "Quote failed");
+    if (!quoteRes.ok || quoteData.ok === false) {
+      throw new Error(quoteData.error || "Quote failed");
     }
 
-    if (!candleRes.ok) {
-      throw new Error(candles.error || "Candles failed");
-    }
-
-    appState.currentQuote = quote;
-    appState.currentCandles = candles.points || [];
-
-    renderQuote(symbol, quote);
-    renderChart("marketChart", appState.currentCandles, symbol);
-    updateHero(symbol, quote);
-    updateRisk(symbol, quote, appState.currentCandles);
-
-    status.textContent = "Live";
+    quote = quoteData;
   } catch (err) {
-    console.error(err);
-    status.textContent = "Error";
-    alert(`Unable to load ${symbol}. Check backend API, Worker secret, and CORS.`);
+    quoteError = err;
+  }
+
+  if (quote) {
+    try {
+      const candleRes = await fetch(`${API_BASE}/api/candles?symbol=${encodeURIComponent(symbol)}`);
+      const candleData = await candleRes.json();
+
+      if (!candleRes.ok || candleData.ok === false) {
+        throw new Error(candleData.error || "Candles failed");
+      }
+
+      candles = candleData.points || [];
+    } catch (err) {
+      candlesError = err;
+    }
+  }
+
+  if (quoteError) {
+    console.error(quoteError);
+    if (status) status.textContent = "Error";
+    showChartUnavailable("Live quote is unavailable right now.");
+    alert(`Unable to load ${symbol} quote. Check backend quote API.`);
+    return;
+  }
+
+  appState.currentQuote = quote;
+  appState.currentCandles = Array.isArray(candles) ? candles : [];
+
+  renderQuote(symbol, quote);
+  updateHero(symbol, quote);
+
+  if (candles && candles.length > 1) {
+    renderChart("marketChart", appState.currentCandles, symbol);
+    updateRisk(symbol, quote, appState.currentCandles);
+    clearChartUnavailable();
+  } else {
+    showChartUnavailable(
+      candlesError ? "Chart data unavailable right now. Quote is still live." : "No chart data available."
+    );
+    renderEmptyChart("marketChart", `${symbol} chart unavailable`);
+    renderRiskUnavailable(symbol, quote);
+  }
+
+  if (status) {
+    status.textContent = candlesError ? "Quote Live / Chart Unavailable" : "Live";
   }
 }
 
 function renderQuote(symbol, quote) {
   const isUp = Number(quote.dp) >= 0;
 
-  document.getElementById("quoteSymbol").textContent = symbol;
-  document.getElementById("quotePrice").textContent = formatMoney(quote.c);
-  document.getElementById("quoteChange").textContent = formatSigned(quote.d);
-  document.getElementById("quotePercent").textContent = `${formatSigned(quote.dp)}%`;
-  document.getElementById("quoteHigh").textContent = formatMoney(quote.h);
-  document.getElementById("quoteLow").textContent = formatMoney(quote.l);
-  document.getElementById("quoteOpen").textContent = formatMoney(quote.o);
-  document.getElementById("quotePrevClose").textContent = formatMoney(quote.pc);
+  setText("quoteSymbol", symbol);
+  setText("quotePrice", formatMoney(quote.c));
+  setText("quoteChange", formatSigned(quote.d));
+  setText("quotePercent", `${formatSigned(quote.dp)}%`);
+  setText("quoteHigh", formatMoney(quote.h));
+  setText("quoteLow", formatMoney(quote.l));
+  setText("quoteOpen", formatMoney(quote.o));
+  setText("quotePrevClose", formatMoney(quote.pc));
 
-  document.getElementById("quoteChange").className = isUp ? "up" : "down";
-  document.getElementById("quotePercent").className = isUp ? "up" : "down";
+  setClass("quoteChange", isUp ? "up" : "down");
+  setClass("quotePercent", isUp ? "up" : "down");
 }
 
 function updateHero(symbol, quote) {
-  document.getElementById("heroSymbol").textContent = symbol;
-  document.getElementById("heroPrice").textContent = formatMoney(quote.c);
-  document.getElementById("heroChange").textContent = `${formatSigned(quote.d)} (${formatSigned(quote.dp)}%)`;
+  setText("heroSymbol", symbol);
+  setText("heroPrice", formatMoney(quote.c));
+  setText("heroChange", `${formatSigned(quote.d)} (${formatSigned(quote.dp)}%)`);
 }
 
 function renderChart(canvasId, data, symbol) {
@@ -437,7 +512,6 @@ function renderChart(canvasId, data, symbol) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
-
   const ratio = window.devicePixelRatio || 1;
   const cssWidth = canvas.clientWidth || canvas.width || 1200;
   const cssHeight = canvasId === "marketChartExpanded" ? 620 : 380;
@@ -471,25 +545,21 @@ function renderChart(canvasId, data, symbol) {
   }
 
   if (!data || data.length < 2) {
-    ctx.fillStyle = textColor;
-    ctx.font = "16px sans-serif";
-    ctx.fillText("No chart data available", padding.left, cssHeight / 2);
+    renderEmptyChart(canvasId, "No chart data available");
     return;
   }
 
-  const values = data.map((p) => p.close);
+  const values = data.map((p) => Number(p.close));
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = Math.max(max - min, 1);
 
   const points = data.map((point, index) => {
-    const x =
-      padding.left +
-      (index / (data.length - 1)) * (cssWidth - padding.left - padding.right);
+    const x = padding.left + (index / (data.length - 1)) * (cssWidth - padding.left - padding.right);
     const y =
       cssHeight -
       padding.bottom -
-      ((point.close - min) / range) * (cssHeight - padding.top - padding.bottom);
+      ((Number(point.close) - min) / range) * (cssHeight - padding.top - padding.bottom);
     return { x, y, ...point };
   });
 
@@ -528,28 +598,66 @@ function renderChart(canvasId, data, symbol) {
   for (let i = 0; i <= xTicks; i += 1) {
     const idx = Math.floor((data.length - 1) * (i / xTicks));
     const p = points[idx];
-    ctx.fillText(data[idx].label, Math.max(p.x - 20, padding.left), cssHeight - 12);
+    const label = data[idx].label || "";
+    ctx.fillText(label, Math.max(p.x - 20, padding.left), cssHeight - 12);
   }
+}
+
+function renderEmptyChart(canvasId, message) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || canvas.width || 1200;
+  const cssHeight = canvasId === "marketChartExpanded" ? 620 : 380;
+
+  canvas.width = cssWidth * ratio;
+  canvas.height = cssHeight * ratio;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  const styles = getComputedStyle(document.body);
+  const textColor = styles.getPropertyValue("--muted").trim() || "#93a1bd";
+  const bgColor = styles.getPropertyValue("--panel-2").trim() || "#0f1522";
+
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+  ctx.fillStyle = textColor;
+  ctx.font = "16px sans-serif";
+  ctx.fillText(message, 24, 42);
 }
 
 function openChartModal() {
   const modal = document.getElementById("chartModal");
+  if (!modal) return;
+
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
-  document.getElementById("modalChartTitle").textContent = `${appState.currentSymbol} Expanded Chart`;
-  renderChart("marketChartExpanded", appState.currentCandles, appState.currentSymbol);
+  setText("modalChartTitle", `${appState.currentSymbol} Expanded Chart`);
+
+  if (appState.currentCandles.length > 1) {
+    renderChart("marketChartExpanded", appState.currentCandles, appState.currentSymbol);
+  } else {
+    renderEmptyChart("marketChartExpanded", `${appState.currentSymbol} chart unavailable`);
+  }
 }
 
 function closeChartModal() {
   const modal = document.getElementById("chartModal");
+  if (!modal) return;
+
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
 }
 
 function updateRisk(symbol, quote, candles) {
-  if (!quote || !candles || candles.length < 3) return;
+  if (!quote || !candles || candles.length < 3) {
+    renderRiskUnavailable(symbol, quote);
+    return;
+  }
 
-  const closes = candles.map((x) => x.close);
+  const closes = candles.map((x) => Number(x.close));
   const returns = [];
 
   for (let i = 1; i < closes.length; i += 1) {
@@ -559,27 +667,18 @@ function updateRisk(symbol, quote, candles) {
   }
 
   const avg = returns.reduce((a, b) => a + b, 0) / returns.length;
-  const variance =
-    returns.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / returns.length;
+  const variance = returns.reduce((sum, r) => sum + Math.pow(r - avg, 2), 0) / returns.length;
   const volatility = Math.sqrt(variance);
 
   const dailyMove = Math.abs(Number(quote.dp || 0));
   const momentum = Math.abs(avg);
 
-  let score =
-    Math.min(dailyMove * 7, 35) +
-    Math.min(volatility * 18, 40) +
-    Math.min(momentum * 12, 25);
-
+  let score = Math.min(dailyMove * 7, 35) + Math.min(volatility * 18, 40) + Math.min(momentum * 12, 25);
   score = Math.max(1, Math.min(100, Math.round(score)));
 
-  const label =
-    score < 30 ? "Low Risk" : score < 60 ? "Moderate Risk" : "High Risk";
+  const label = score < 30 ? "Low Risk" : score < 60 ? "Moderate Risk" : "High Risk";
 
-  let reason = `${symbol} shows ${dailyMove.toFixed(2)}% daily move and ${volatility.toFixed(
-    2
-  )}% rolling volatility.`;
-
+  let reason = `${symbol} shows ${dailyMove.toFixed(2)}% daily move and ${volatility.toFixed(2)}% rolling volatility.`;
   if (score >= 60) {
     reason += " Volatility is elevated and deserves close monitoring.";
   } else if (score >= 30) {
@@ -588,10 +687,10 @@ function updateRisk(symbol, quote, candles) {
     reason += " Recent movement looks relatively stable.";
   }
 
-  document.getElementById("riskScoreValue").textContent = score;
-  document.getElementById("riskLabel").textContent = label;
-  document.getElementById("riskReason").textContent = reason;
-  document.getElementById("heroRisk").textContent = `${score}/100`;
+  setText("riskScoreValue", score);
+  setText("riskLabel", label);
+  setText("riskReason", reason);
+  setText("heroRisk", `${score}/100`);
 
   const ring = document.querySelector(".risk-ring");
   if (ring) {
@@ -607,9 +706,34 @@ function updateRisk(symbol, quote, candles) {
   if (momentumBar) momentumBar.style.width = `${Math.min(momentum * 12, 25) * 4}%`;
 }
 
+function renderRiskUnavailable(symbol, quote) {
+  const dailyMove = Math.abs(Number(quote?.dp || 0));
+  let fallbackScore = Math.max(5, Math.min(100, Math.round(dailyMove * 8 + 10)));
+
+  setText("riskScoreValue", fallbackScore);
+  setText("riskLabel", "Estimated Risk");
+  setText(
+    "riskReason",
+    `${symbol} live quote is available, but chart history is unavailable, so this is a lighter estimate based on daily move only.`
+  );
+  setText("heroRisk", `${fallbackScore}/100`);
+
+  const ring = document.querySelector(".risk-ring");
+  if (ring) {
+    ring.style.background = `conic-gradient(var(--accent) ${fallbackScore * 3.6}deg, rgba(255,255,255,0.08) ${fallbackScore * 3.6}deg)`;
+  }
+
+  const dailyMoveBar = document.getElementById("dailyMoveBar");
+  const volatilityBar = document.getElementById("volatilityBar");
+  const momentumBar = document.getElementById("momentumBar");
+
+  if (dailyMoveBar) dailyMoveBar.style.width = `${Math.min(dailyMove * 8, 80)}%`;
+  if (volatilityBar) volatilityBar.style.width = "0%";
+  if (momentumBar) momentumBar.style.width = "0%";
+}
+
 function renderJobs(list) {
   const grid = document.getElementById("jobsGrid");
-
   if (!grid) return;
 
   if (!list.length) {
@@ -638,7 +762,6 @@ function renderJobs(list) {
 
 function renderSavedAlerts() {
   const wrap = document.getElementById("savedAlerts");
-
   if (!wrap) return;
 
   if (!appState.savedAlerts.length) {
@@ -682,6 +805,9 @@ async function checkAlertsNow() {
     try {
       const res = await fetch(`${API_BASE}/api/quote?symbol=${encodeURIComponent(item.symbol)}`);
       const quote = await res.json();
+
+      if (!res.ok || quote.ok === false) continue;
+
       const hit = Number(quote.c) >= Number(item.above);
       results.push({ ...item, current: quote.c, hit });
 
@@ -701,6 +827,35 @@ async function checkAlertsNow() {
 
 function persistAlerts() {
   localStorage.setItem("youooo_v8_alerts", JSON.stringify(appState.savedAlerts));
+}
+
+function showChartUnavailable(message) {
+  let el = document.getElementById("chartMessage");
+  const chartShell = document.querySelector(".chart-card .card-header");
+
+  if (!el && chartShell) {
+    el = document.createElement("span");
+    el.id = "chartMessage";
+    el.className = "muted";
+    chartShell.appendChild(el);
+  }
+
+  if (el) el.textContent = message;
+}
+
+function clearChartUnavailable() {
+  const el = document.getElementById("chartMessage");
+  if (el) el.textContent = "";
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function setClass(id, className) {
+  const el = document.getElementById(id);
+  if (el) el.className = className;
 }
 
 function formatMoney(value) {
