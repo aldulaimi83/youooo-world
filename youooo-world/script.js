@@ -11,7 +11,8 @@ const state = {
   mode: "jobseeker",
   companySearch: "",
   selectedTicker: "NVDA",
-  selectedMarketSymbol: "NASDAQ:NVDA"
+  selectedMarketSymbol: "NASDAQ:NVDA",
+  chartExpanded: false
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -23,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSearch();
   initPremium();
   initTickerExplorer();
+  initAlertForm();
   loadAllData();
 });
 
@@ -41,7 +43,6 @@ function initTabs() {
     button.addEventListener("click", () => {
       buttons.forEach((b) => b.classList.remove("active"));
       tabs.forEach((tab) => tab.classList.remove("active"));
-
       button.classList.add("active");
       const target = document.getElementById(button.dataset.tab);
       if (target) target.classList.add("active");
@@ -105,6 +106,8 @@ function initPremium() {
     if (!modal) return;
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
+    const tickerInput = document.getElementById("alertTicker");
+    if (tickerInput && !tickerInput.value) tickerInput.value = state.selectedTicker;
   };
 
   const close = () => {
@@ -133,7 +136,10 @@ function initModal() {
   backdrop?.addEventListener("click", closeModal);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeModal();
+    if (event.key === "Escape") {
+      closeModal();
+      if (state.chartExpanded) toggleChartExpand(false);
+    }
   });
 
   window.__openSignalModal = openSignalModal;
@@ -146,9 +152,7 @@ function openSignalModal(signal) {
   document.getElementById("modalTitle").textContent = signal.title || "Signal Details";
   document.getElementById("modalMeta").textContent =
     `${formatCategory(signal.category)} • Score ${signal.score || 70} • ${formatDate(signal.publishedAt || signal.date)}`;
-
-  document.getElementById("modalSummary").textContent =
-    signal.summary || "No summary available.";
+  document.getElementById("modalSummary").textContent = signal.summary || "No summary available.";
 
   const impactList = document.getElementById("modalImpactList");
   const watchList = document.getElementById("modalWatchList");
@@ -180,11 +184,16 @@ function openSignalModal(signal) {
 function initTickerExplorer() {
   const input = document.getElementById("tickerInput");
   const loadBtn = document.getElementById("loadTickerBtn");
+  const expandBtn = document.getElementById("expandChartBtn");
   const quickBtns = document.querySelectorAll(".quick-ticker-btn");
 
   loadBtn?.addEventListener("click", () => {
     const raw = input?.value || state.selectedTicker;
     applyTicker(raw);
+  });
+
+  expandBtn?.addEventListener("click", () => {
+    toggleChartExpand(!state.chartExpanded);
   });
 
   input?.addEventListener("keydown", (event) => {
@@ -205,6 +214,17 @@ function initTickerExplorer() {
   updateTickerSummary();
 }
 
+function toggleChartExpand(forceState = null) {
+  const chartContainer = document.getElementById("chartContainer");
+  const expandBtn = document.getElementById("expandChartBtn");
+  if (!chartContainer || !expandBtn) return;
+
+  state.chartExpanded = forceState === null ? !state.chartExpanded : forceState;
+  chartContainer.classList.toggle("fullscreen-chart", state.chartExpanded);
+  expandBtn.textContent = state.chartExpanded ? "Exit Expand" : "Expand Chart";
+  renderTickerWidget(state.selectedMarketSymbol);
+}
+
 function applyTicker(rawTicker) {
   const normalized = normalizeMarketSymbol(rawTicker);
   const bare = extractBareTicker(normalized);
@@ -218,6 +238,11 @@ function applyTicker(rawTicker) {
   renderTickerWidget(normalized);
   updateTickerSummary();
   renderTickerIntelligence();
+
+  const alertTicker = document.getElementById("alertTicker");
+  if (alertTicker && !alertTicker.matches(":focus")) {
+    alertTicker.value = bare;
+  }
 }
 
 function normalizeMarketSymbol(rawTicker) {
@@ -350,6 +375,43 @@ function renderTickerIntelligence() {
   `;
 }
 
+function initAlertForm() {
+  const form = document.getElementById("premiumAlertForm");
+  const status = document.getElementById("alertSaveStatus");
+  if (!form || !status) return;
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const email = document.getElementById("alertEmail")?.value.trim();
+    const ticker = (document.getElementById("alertTicker")?.value.trim() || state.selectedTicker).toUpperCase();
+    const type = document.getElementById("alertType")?.value || "market-move";
+
+    if (!email) {
+      status.textContent = "Please enter an email.";
+      return;
+    }
+
+    const saved = JSON.parse(localStorage.getItem("youooo_alert_preferences") || "[]");
+    saved.push({
+      email,
+      ticker,
+      type,
+      createdAt: new Date().toISOString()
+    });
+
+    localStorage.setItem("youooo_alert_preferences", JSON.stringify(saved));
+    status.textContent = `Saved alert preference for ${ticker} (${type}).`;
+    form.reset();
+
+    const tickerInput = document.getElementById("alertTicker");
+    if (tickerInput) tickerInput.value = state.selectedTicker;
+  });
+
+  const tickerInput = document.getElementById("alertTicker");
+  if (tickerInput) tickerInput.value = state.selectedTicker;
+}
+
 function findTickerWatchlistItem(ticker) {
   return state.watchlist.find(
     (item) => String(item.symbol || "").toUpperCase() === String(ticker || "").toUpperCase()
@@ -414,6 +476,7 @@ function renderAll() {
   renderSectorHeatmap();
   renderLayoffTimeline();
   renderCompanyCards();
+  renderBigCompanyJobsCorner();
   renderWatchlist();
   renderMovers();
   renderImpactEngine();
@@ -544,7 +607,6 @@ function renderLiveAlerts() {
   if (!container) return;
 
   const alerts = buildCombinedSignals().slice(0, 6);
-
   container.innerHTML = alerts.map((item) => `
     <div class="alert-item">
       <strong>${escapeHtml(item.title)}</strong>
@@ -703,6 +765,23 @@ function renderCompanyCards() {
           <div class="metric-value">${escapeHtml(item.endMetric)}</div>
         </div>
       </div>
+    </div>
+  `).join("");
+}
+
+function renderBigCompanyJobsCorner() {
+  const container = document.getElementById("bigCompanyJobsCorner");
+  if (!container) return;
+
+  const items = buildBigCompanyJobsCorner();
+  container.innerHTML = items.map((item) => `
+    <div class="jobs-corner-item">
+      <div class="jobs-corner-top">
+        <strong>${escapeHtml(item.company)}</strong>
+        <span class="jobs-corner-tag ${item.className}">${escapeHtml(item.label)}</span>
+      </div>
+      <div class="feed-summary">${escapeHtml(item.summary)}</div>
+      <div class="row-meta">${escapeHtml(item.roles)}</div>
     </div>
   `).join("");
 }
@@ -983,6 +1062,60 @@ function buildCompanyCards() {
       summary
     };
   });
+}
+
+function buildBigCompanyJobsCorner() {
+  const base = [
+    {
+      company: "NVIDIA",
+      label: "Strong Target",
+      className: "level-positive",
+      summary: "AI demand and infrastructure growth make it one of the strongest big-company targets.",
+      roles: "Validation • Firmware • AI infra • Silicon"
+    },
+    {
+      company: "AMD",
+      label: "Strong Target",
+      className: "level-positive",
+      summary: "AI and semiconductor strength support better relative positioning for engineering roles.",
+      roles: "Validation • Systems • Silicon • Platform"
+    },
+    {
+      company: "Microsoft",
+      label: "Stable Target",
+      className: "level-low",
+      summary: "Big platform stability plus AI buildout make it a high-value company to watch.",
+      roles: "Cloud • AI • Systems • Backend"
+    },
+    {
+      company: "Google",
+      label: "Watch",
+      className: "level-mixed",
+      summary: "Strong AI platform relevance, but hiring can be selective and team-dependent.",
+      roles: "AI • Infra • Cloud • Data"
+    },
+    {
+      company: "Amazon",
+      label: "Watch",
+      className: "level-mixed",
+      summary: "Large surface area for roles, especially in cloud and infrastructure.",
+      roles: "AWS • Ops • Hardware • Cloud"
+    },
+    {
+      company: "Intel",
+      label: "Caution",
+      className: "level-medium",
+      summary: "Still important, but restructuring signals suggest more caution for job seekers.",
+      roles: "Silicon • Validation • Platform"
+    }
+  ];
+
+  return state.mode === "trader"
+    ? base.map((item) => ({
+        ...item,
+        summary: `${item.company} matters as a narrative anchor, but this corner is strongest in Job Seeker Mode.`
+      }))
+    : base;
 }
 
 function buildSectorHeatmapData() {

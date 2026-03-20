@@ -24,7 +24,7 @@
 
       <div class="topbar-right">
         <div class="status-pill online">STATUS: LIVE</div>
-        <div class="status-pill premium">PRODUCT: V6.2</div>
+        <div class="status-pill premium">PRODUCT: V7</div>
         <div class="status-pill" id="updatedAt">UPDATED: --</div>
       </div>
     </header>
@@ -69,7 +69,7 @@
                 <div class="hero-kicker">STOCK EXPLORER</div>
                 <h3 class="stock-explorer-title">Live Chart + Ticker Intelligence</h3>
                 <p class="stock-explorer-copy">
-                  Search a ticker and view a clean chart with a real narrative, action guidance, and premium-style intelligence.
+                  Search a ticker, expand the chart, and connect price action to jobs, AI, and geopolitical narratives.
                 </p>
               </div>
 
@@ -82,6 +82,7 @@
                   value="NVDA"
                 />
                 <button id="loadTickerBtn" class="ticker-load-btn">Load</button>
+                <button id="expandChartBtn" class="ticker-load-btn secondary-btn">Expand Chart</button>
               </div>
             </div>
 
@@ -96,62 +97,45 @@
               <button class="quick-ticker-btn" data-symbol="INTC">INTC</button>
             </div>
 
-            <div class="chart-panel">
-              <div class="chart-main">
+            <div class="chart-panel chart-panel-vertical">
+              <div class="chart-main" id="chartContainer">
                 <div id="tvChartWidget" class="tv-chart-widget"></div>
 
-                <div id="stockSummaryBar" class="stock-summary-bar">
-                  <div class="stock-mini-card">
-                    <div class="stock-mini-label">Selected</div>
-                    <div class="stock-mini-value">NVDA</div>
+                <div id="stockSummaryBar" class="stock-summary-bar"></div>
+
+                <div class="ticker-intelligence-panel">
+                  <div class="ticker-intel-card">
+                    <div class="section-headline-row">
+                      <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
+                      <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
+                    </div>
+                    <div id="tickerWhyMatters" class="intel-list">
+                      <div class="empty-state">Building ticker intelligence...</div>
+                    </div>
                   </div>
-                  <div class="stock-mini-card">
-                    <div class="stock-mini-label">Watchlist</div>
-                    <div class="stock-mini-value">Waiting...</div>
+
+                  <div class="ticker-intel-card">
+                    <div class="section-headline-row">
+                      <h3>Suggested Action</h3>
+                      <span class="trend-pill warning">Decision Layer</span>
+                    </div>
+                    <div id="tickerActionBox" class="action-box">
+                      <div class="empty-state">Building action guidance...</div>
+                    </div>
                   </div>
-                  <div class="stock-mini-card">
-                    <div class="stock-mini-label">Mode Lens</div>
-                    <div class="stock-mini-value">Job Seeker</div>
-                  </div>
-                  <div class="stock-mini-card">
-                    <div class="stock-mini-label">Narrative</div>
-                    <div class="stock-mini-value">AI / semis</div>
+
+                  <div class="ticker-intel-card premium-mini">
+                    <div class="section-headline-row">
+                      <h3>Premium Tracking</h3>
+                      <span class="trend-pill gold">Alerts</span>
+                    </div>
+                    <div class="premium-mini-copy">
+                      Save this ticker, save your email, and get ready for alert automation.
+                    </div>
+                    <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
                   </div>
                 </div>
               </div>
-
-              <aside class="chart-side">
-                <div class="ticker-intel-card">
-                  <div class="section-headline-row">
-                    <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
-                    <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
-                  </div>
-                  <div id="tickerWhyMatters" class="intel-list">
-                    <div class="empty-state">Building ticker intelligence...</div>
-                  </div>
-                </div>
-
-                <div class="ticker-intel-card">
-                  <div class="section-headline-row">
-                    <h3>Suggested Action</h3>
-                    <span class="trend-pill warning">Decision Layer</span>
-                  </div>
-                  <div id="tickerActionBox" class="action-box">
-                    <div class="empty-state">Building action guidance...</div>
-                  </div>
-                </div>
-
-                <div class="ticker-intel-card premium-mini">
-                  <div class="section-headline-row">
-                    <h3>Premium Tracking</h3>
-                    <span class="trend-pill gold">Next Step</span>
-                  </div>
-                  <div class="premium-mini-copy">
-                    Track this ticker, save it to a watchlist, and get alerts when the narrative changes.
-                  </div>
-                  <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
-                </div>
-              </aside>
             </div>
           </div>
         </div>
@@ -284,17 +268,31 @@
           </section>
 
           <section id="companiesTab" class="tab-content">
-            <div class="card">
-              <div class="section-headline-row">
-                <h2>Company Intelligence</h2>
-                <span class="trend-pill gold">Most Valuable Page</span>
+            <div class="grid-2">
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Company Intelligence</h2>
+                  <span class="trend-pill gold">Most Valuable Page</span>
+                </div>
+                <p class="card-subtitle">
+                  One place to understand which companies look risky, resilient, or worth tracking.
+                </p>
+                <div id="companyCards" class="company-cards">
+                  <div class="empty-state">Building company cards...</div>
+                </div>
               </div>
-              <p class="card-subtitle">
-                This is the part that can become a real product: one place to quickly understand which companies look risky, resilient, or worth tracking.
-              </p>
 
-              <div id="companyCards" class="company-cards">
-                <div class="empty-state">Building company cards...</div>
+              <div class="card">
+                <div class="section-headline-row">
+                  <h2>Big Companies Jobs Corner</h2>
+                  <span class="trend-pill success">Job Finder</span>
+                </div>
+                <p class="card-subtitle">
+                  Quick company targets for job seekers. Use this as your high-value application shortlist.
+                </p>
+                <div id="bigCompanyJobsCorner" class="jobs-corner-list">
+                  <div class="empty-state">Building jobs corner...</div>
+                </div>
               </div>
             </div>
           </section>
@@ -474,8 +472,36 @@
       <div class="modal-kicker">PREMIUM</div>
       <h2 id="premiumTitle">Premium Alerts</h2>
       <p class="card-subtitle">
-        This can later become email alerts, saved watchlists, company tracking, and subscriptions.
+        Save your email and alert preferences now. This version stores your preferences in your browser and prepares the product for real alert automation.
       </p>
+
+      <form id="premiumAlertForm" class="alert-form">
+        <label class="form-label">
+          Email
+          <input id="alertEmail" class="form-input" type="email" placeholder="you@example.com" required />
+        </label>
+
+        <label class="form-label">
+          Ticker
+          <input id="alertTicker" class="form-input" type="text" placeholder="NVDA" />
+        </label>
+
+        <label class="form-label">
+          Alert Type
+          <select id="alertType" class="form-input">
+            <option value="market-move">Market move</option>
+            <option value="company-risk">Company risk</option>
+            <option value="layoffs">Layoff detection</option>
+            <option value="ai-demand">AI / chip demand</option>
+            <option value="jobs-shift">Hiring momentum</option>
+          </select>
+        </label>
+
+        <button type="submit" class="premium-btn">Save Alert Preference</button>
+      </form>
+
+      <div id="alertSaveStatus" class="alert-save-status"></div>
+
       <div class="premium-feature-list">
         <div class="premium-feature">Company risk alerts</div>
         <div class="premium-feature">Layoff detection</div>

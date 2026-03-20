@@ -43,7 +43,8 @@ a {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -117,7 +118,8 @@ input {
 .mover-badge,
 .heat-level,
 .opportunity-tag,
-.action-tag {
+.action-tag,
+.jobs-corner-tag {
   border: 1px solid var(--border);
   border-radius: 999px;
 }
@@ -157,17 +159,13 @@ input {
   box-shadow: var(--shadow);
 }
 
-.hero-main {
-  min-height: 310px;
-}
-
+.hero-main,
 .hero-side {
   min-height: 310px;
 }
 
 .hero-kicker,
-.modal-kicker,
-.premium-kicker {
+.modal-kicker {
   color: var(--accent-2);
   font-size: 12px;
   font-weight: 900;
@@ -190,7 +188,8 @@ input {
 .stock-explorer-copy,
 .intel-note,
 .action-copy,
-.premium-mini-copy {
+.premium-mini-copy,
+.form-help {
   color: #cdd8ef;
   line-height: 1.55;
 }
@@ -237,6 +236,10 @@ input {
   color: var(--gold);
 }
 
+.secondary-btn {
+  color: var(--accent);
+}
+
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -267,8 +270,7 @@ input {
   padding: 22px;
   border: 1px solid var(--border);
   border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(10, 18, 34, 0.95), rgba(10, 18, 34, 0.72));
+  background: linear-gradient(180deg, rgba(10, 18, 34, 0.95), rgba(10, 18, 34, 0.72));
 }
 
 .stock-explorer-head {
@@ -293,7 +295,8 @@ input {
 }
 
 .ticker-input,
-.search-input {
+.search-input,
+.form-input {
   width: 100%;
   padding: 12px 14px;
   border-radius: 14px;
@@ -308,7 +311,8 @@ input {
 }
 
 .ticker-input::placeholder,
-.search-input::placeholder {
+.search-input::placeholder,
+.form-input::placeholder {
   color: var(--muted);
 }
 
@@ -320,20 +324,20 @@ input {
 }
 
 .chart-panel {
-  display: grid;
-  grid-template-columns: 1.3fr 0.75fr;
-  gap: 16px;
   margin-top: 18px;
-  align-items: start;
 }
 
 .chart-main {
   min-width: 0;
 }
 
-.chart-side {
-  display: grid;
-  gap: 14px;
+.tv-chart-widget {
+  width: 100%;
+  min-height: 780px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #091120;
 }
 
 .stock-summary-bar {
@@ -361,66 +365,43 @@ input {
   font-weight: 800;
 }
 
-.tv-chart-widget {
-  margin-top: 0;
-  width: 100%;
-  min-height: 620px;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: #091120;
+.ticker-intelligence-panel {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
 }
 
-.ticker-intel-card {
+.ticker-intel-card,
+.jobs-corner-item,
+.opportunity-item,
+.intel-item,
+.action-item {
   padding: 16px;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(12, 20, 36, 0.82);
 }
 
-.premium-mini {
-  background:
-    radial-gradient(circle at top right, rgba(255, 211, 106, 0.08), transparent 30%),
-    rgba(12, 20, 36, 0.82);
-}
-
 .intel-list,
 .action-box,
-.opportunities-list {
+.opportunities-list,
+.jobs-corner-list {
   display: grid;
   gap: 10px;
   margin-top: 12px;
 }
 
-.intel-item,
-.action-item,
-.opportunity-item {
-  padding: 13px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(14, 23, 42, 0.82);
-}
-
 .intel-item strong,
 .action-item strong,
-.opportunity-item strong {
+.opportunity-item strong,
+.jobs-corner-item strong {
   display: block;
   margin-bottom: 6px;
 }
 
-.opportunity-top,
-.action-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: center;
-}
-
-.opportunity-tag,
-.action-tag {
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 800;
+.premium-mini {
+  background: radial-gradient(circle at top right, rgba(255, 211, 106, 0.08), transparent 30%), rgba(12, 20, 36, 0.82);
 }
 
 .dashboard-grid {
@@ -507,7 +488,10 @@ input {
 .signal-topline,
 .feed-meta,
 .row-meta,
-.company-top {
+.company-top,
+.opportunity-top,
+.action-top,
+.jobs-corner-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -517,12 +501,14 @@ input {
 .section-headline-row h2,
 .card h2,
 .feed-title,
-.signal-title,
-.premium-card h3 {
+.signal-title {
   margin: 0;
 }
 
-.trend-pill {
+.trend-pill,
+.jobs-corner-tag,
+.opportunity-tag,
+.action-tag {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 900;
@@ -586,18 +572,24 @@ input {
   gap: 10px;
 }
 
-.signal-type {
+.signal-type,
+.signal-score,
+.company-tag,
+.risk-score-badge,
+.region-badge,
+.mover-badge,
+.heat-level {
   padding: 7px 11px;
-  color: var(--accent-2);
   font-size: 12px;
   font-weight: 800;
 }
 
+.signal-type {
+  color: var(--accent-2);
+}
+
 .signal-score {
-  padding: 7px 11px;
   color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .signal-title,
@@ -645,16 +637,6 @@ input {
 .company-name {
   font-size: 20px;
   font-weight: 900;
-}
-
-.company-tag,
-.risk-score-badge,
-.region-badge,
-.mover-badge,
-.heat-level {
-  padding: 7px 11px;
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .company-metrics {
@@ -776,6 +758,24 @@ input {
   padding: 13px;
 }
 
+.alert-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.form-label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.alert-save-status {
+  margin-top: 12px;
+  color: var(--success);
+  min-height: 24px;
+}
+
 .empty-state {
   padding: 15px;
   border: 1px dashed var(--border);
@@ -822,6 +822,20 @@ input {
 
 .level-mixed {
   color: var(--accent);
+}
+
+.fullscreen-chart {
+  position: fixed !important;
+  inset: 20px !important;
+  z-index: 3000 !important;
+  background: #050914 !important;
+  padding: 18px !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.fullscreen-chart .tv-chart-widget {
+  min-height: calc(100vh - 120px);
 }
 
 .modal {
@@ -907,12 +921,13 @@ input {
   .hero,
   .grid-2,
   .company-cards,
-  .chart-panel {
+  .ticker-intelligence-panel {
     grid-template-columns: 1fr;
   }
 
   .hero-stats,
-  .stock-summary-bar {
+  .stock-summary-bar,
+  .watchlist-grid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -924,6 +939,10 @@ input {
   .top-nav,
   .topbar-right {
     width: 100%;
+  }
+
+  .tv-chart-widget {
+    min-height: 620px;
   }
 }
 
@@ -958,5 +977,9 @@ input {
 
   .stock-controls {
     width: 100%;
+  }
+
+  .tv-chart-widget {
+    min-height: 520px;
   }
 }
