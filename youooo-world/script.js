@@ -239,7 +239,10 @@ function normalizeMarketSymbol(rawTicker) {
     QQQ: "NASDAQ:QQQ",
     SPY: "AMEX:SPY",
     COIN: "NASDAQ:COIN",
-    UBER: "NYSE:UBER"
+    UBER: "NYSE:UBER",
+    XOM: "NYSE:XOM",
+    CVX: "NYSE:CVX",
+    RXT: "NASDAQ:RXT"
   };
 
   return known[raw] || `NASDAQ:${raw}`;
@@ -273,7 +276,7 @@ function renderTickerWidget(symbol) {
     withdateranges: true,
     allow_symbol_change: false,
     save_image: false,
-    studies: ["MACD@tv-basicstudies", "RSI@tv-basicstudies"],
+    studies: [],
     container_id: "tvChartWidget"
   });
 }
@@ -365,17 +368,17 @@ function buildTickerNarrative(ticker, mover, watch) {
   if (["NVDA", "AMD", "INTC", "TSM", "TSMC"].includes(t)) {
     return state.mode === "trader" ? "AI / semis trade" : "AI / semiconductor jobs";
   }
-
   if (["MSFT", "GOOGL", "GOOG", "META", "AMZN"].includes(t)) {
     return state.mode === "trader" ? "Mega-cap AI narrative" : "Big Tech hiring lens";
   }
-
   if (["TSLA"].includes(t)) {
     return state.mode === "trader" ? "EV / momentum risk" : "Auto / engineering lens";
   }
-
   if (["COIN"].includes(t)) {
     return state.mode === "trader" ? "Crypto beta trade" : "Fintech / crypto jobs";
+  }
+  if (["XOM", "CVX"].includes(t)) {
+    return state.mode === "trader" ? "Energy / geopolitical trade" : "Energy stability lens";
   }
 
   if (mover) {
@@ -1286,6 +1289,21 @@ function buildTickerIntelligence(ticker) {
         ? "Useful when you want a sentiment-sensitive chart."
         : "Useful when tracking crypto/fintech workforce pressure."
     });
+  } else if (["XOM", "CVX"].includes(t)) {
+    points.push({
+      title: `${t} benefits from oil-sensitive narratives`,
+      note: "Middle East escalation and supply disruption headlines can matter directly here."
+    });
+    points.push({
+      title: "Energy is a conflict-linked sector",
+      note: "This type of ticker often becomes more relevant when geopolitical stress rises."
+    });
+    points.push({
+      title: state.mode === "trader" ? "Macro trade lens is strong" : "Stability lens is stronger",
+      note: state.mode === "trader"
+        ? "This can be one of the clearest market-impact expressions of geopolitical risk."
+        : "Less about hiring momentum, more about resilient company positioning."
+    });
   } else {
     points.push({
       title: `${t} is being tracked as a custom ticker`,
@@ -1310,12 +1328,12 @@ function buildTickerAction(ticker) {
   const t = String(ticker || "").toUpperCase();
 
   if (state.mode === "trader") {
-    if (["NVDA", "AMD", "MSFT"].includes(t)) {
+    if (["NVDA", "AMD", "MSFT", "XOM", "CVX"].includes(t)) {
       return {
         title: "Constructive setup",
         label: "Opportunity",
         className: "level-positive",
-        copy: "Strong AI-linked narrative. Best used as a watch / opportunity ticker while momentum and AI demand remain supportive."
+        copy: "Strong narrative support. Best used as a watch / opportunity ticker while momentum and theme alignment remain supportive."
       };
     }
     if (["TSLA", "COIN"].includes(t)) {

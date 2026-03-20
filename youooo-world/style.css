@@ -189,7 +189,8 @@ input {
 .summary-note,
 .stock-explorer-copy,
 .intel-note,
-.action-copy {
+.action-copy,
+.premium-mini-copy {
   color: #cdd8ef;
   line-height: 1.55;
 }
@@ -263,10 +264,11 @@ input {
 
 .stock-explorer {
   margin-top: 22px;
-  padding: 18px;
+  padding: 22px;
   border: 1px solid var(--border);
   border-radius: 22px;
-  background: rgba(10, 18, 34, 0.72);
+  background:
+    linear-gradient(180deg, rgba(10, 18, 34, 0.95), rgba(10, 18, 34, 0.72));
 }
 
 .stock-explorer-head {
@@ -317,6 +319,23 @@ input {
   margin-top: 14px;
 }
 
+.chart-panel {
+  display: grid;
+  grid-template-columns: 1.3fr 0.75fr;
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.chart-main {
+  min-width: 0;
+}
+
+.chart-side {
+  display: grid;
+  gap: 14px;
+}
+
 .stock-summary-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -343,20 +362,13 @@ input {
 }
 
 .tv-chart-widget {
-  margin-top: 16px;
+  margin-top: 0;
   width: 100%;
-  min-height: 460px;
+  min-height: 620px;
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: #091120;
-}
-
-.ticker-intelligence-grid {
-  display: grid;
-  grid-template-columns: 1.35fr 0.8fr;
-  gap: 14px;
-  margin-top: 16px;
 }
 
 .ticker-intel-card {
@@ -364,6 +376,12 @@ input {
   border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(12, 20, 36, 0.82);
+}
+
+.premium-mini {
+  background:
+    radial-gradient(circle at top right, rgba(255, 211, 106, 0.08), transparent 30%),
+    rgba(12, 20, 36, 0.82);
 }
 
 .intel-list,
@@ -758,23 +776,6 @@ input {
   padding: 13px;
 }
 
-.premium-card {
-  background:
-    radial-gradient(circle at top right, rgba(255, 211, 106, 0.08), transparent 30%),
-    linear-gradient(180deg, rgba(10, 18, 34, 0.98), rgba(6, 12, 24, 0.99));
-}
-
-.premium-card p {
-  color: #ced8ef;
-  line-height: 1.55;
-}
-
-.premium-btn {
-  margin-top: 8px;
-  width: 100%;
-  color: var(--gold);
-}
-
 .empty-state {
   padding: 15px;
   border: 1px dashed var(--border);
@@ -906,7 +907,7 @@ input {
   .hero,
   .grid-2,
   .company-cards,
-  .ticker-intelligence-grid {
+  .chart-panel {
     grid-template-columns: 1fr;
   }
 

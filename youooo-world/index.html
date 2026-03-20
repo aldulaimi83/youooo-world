@@ -24,7 +24,7 @@
 
       <div class="topbar-right">
         <div class="status-pill online">STATUS: LIVE</div>
-        <div class="status-pill premium">PRODUCT: V6</div>
+        <div class="status-pill premium">PRODUCT: V6.2</div>
         <div class="status-pill" id="updatedAt">UPDATED: --</div>
       </div>
     </header>
@@ -69,7 +69,7 @@
                 <div class="hero-kicker">STOCK EXPLORER</div>
                 <h3 class="stock-explorer-title">Live Chart + Ticker Intelligence</h3>
                 <p class="stock-explorer-copy">
-                  Search a ticker and view a live chart with a real narrative, not just price action.
+                  Search a ticker and view a clean chart with a real narrative, action guidance, and premium-style intelligence.
                 </p>
               </div>
 
@@ -96,47 +96,62 @@
               <button class="quick-ticker-btn" data-symbol="INTC">INTC</button>
             </div>
 
-            <div id="stockSummaryBar" class="stock-summary-bar">
-              <div class="stock-mini-card">
-                <div class="stock-mini-label">Selected</div>
-                <div class="stock-mini-value">NVDA</div>
-              </div>
-              <div class="stock-mini-card">
-                <div class="stock-mini-label">Watchlist</div>
-                <div class="stock-mini-value">Waiting...</div>
-              </div>
-              <div class="stock-mini-card">
-                <div class="stock-mini-label">Mode Lens</div>
-                <div class="stock-mini-value">Job Seeker</div>
-              </div>
-              <div class="stock-mini-card">
-                <div class="stock-mini-label">Narrative</div>
-                <div class="stock-mini-value">AI / semis</div>
-              </div>
-            </div>
+            <div class="chart-panel">
+              <div class="chart-main">
+                <div id="tvChartWidget" class="tv-chart-widget"></div>
 
-            <div id="tvChartWidget" class="tv-chart-widget"></div>
-
-            <div class="ticker-intelligence-grid">
-              <div class="ticker-intel-card">
-                <div class="section-headline-row">
-                  <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
-                  <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
-                </div>
-                <div id="tickerWhyMatters" class="intel-list">
-                  <div class="empty-state">Building ticker intelligence...</div>
+                <div id="stockSummaryBar" class="stock-summary-bar">
+                  <div class="stock-mini-card">
+                    <div class="stock-mini-label">Selected</div>
+                    <div class="stock-mini-value">NVDA</div>
+                  </div>
+                  <div class="stock-mini-card">
+                    <div class="stock-mini-label">Watchlist</div>
+                    <div class="stock-mini-value">Waiting...</div>
+                  </div>
+                  <div class="stock-mini-card">
+                    <div class="stock-mini-label">Mode Lens</div>
+                    <div class="stock-mini-value">Job Seeker</div>
+                  </div>
+                  <div class="stock-mini-card">
+                    <div class="stock-mini-label">Narrative</div>
+                    <div class="stock-mini-value">AI / semis</div>
+                  </div>
                 </div>
               </div>
 
-              <div class="ticker-intel-card">
-                <div class="section-headline-row">
-                  <h3>Suggested Action</h3>
-                  <span class="trend-pill warning">Decision Layer</span>
+              <aside class="chart-side">
+                <div class="ticker-intel-card">
+                  <div class="section-headline-row">
+                    <h3 id="tickerIntelTitle">Why NVDA matters today</h3>
+                    <span class="trend-pill neutral" id="tickerIntelMode">Job Seeker</span>
+                  </div>
+                  <div id="tickerWhyMatters" class="intel-list">
+                    <div class="empty-state">Building ticker intelligence...</div>
+                  </div>
                 </div>
-                <div id="tickerActionBox" class="action-box">
-                  <div class="empty-state">Building action guidance...</div>
+
+                <div class="ticker-intel-card">
+                  <div class="section-headline-row">
+                    <h3>Suggested Action</h3>
+                    <span class="trend-pill warning">Decision Layer</span>
+                  </div>
+                  <div id="tickerActionBox" class="action-box">
+                    <div class="empty-state">Building action guidance...</div>
+                  </div>
                 </div>
-              </div>
+
+                <div class="ticker-intel-card premium-mini">
+                  <div class="section-headline-row">
+                    <h3>Premium Tracking</h3>
+                    <span class="trend-pill gold">Next Step</span>
+                  </div>
+                  <div class="premium-mini-copy">
+                    Track this ticker, save it to a watchlist, and get alerts when the narrative changes.
+                  </div>
+                  <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
+                </div>
+              </aside>
             </div>
           </div>
         </div>
@@ -406,15 +421,6 @@
             <div id="jobsFeed" class="news-feed compact-feed">
               <div class="empty-state">Loading jobs feed...</div>
             </div>
-          </div>
-
-          <div class="card premium-card">
-            <div class="premium-kicker">MONETIZATION</div>
-            <h3>Premium Alerts</h3>
-            <p>
-              Track company risk changes, layoffs, AI demand shifts, and market impact in one place.
-            </p>
-            <button class="premium-btn" id="premiumCtaBtn">Unlock Premium</button>
           </div>
         </aside>
       </section>
