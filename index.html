@@ -1,297 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Youooo World</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YOUOOO World Intelligence</title>
 
   <link
-    href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
     rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app-shell">
-    <header id="topbar" class="panel draggable">
-      <div class="panel-top">
-        <div class="brand-wrap">
-          <div class="brand-row">
-            <div class="brand-title">YOUOOO</div>
-            <a
-              id="linkedin-globe"
-              href="https://www.linkedin.com/in/ahmedaldulaimi/"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Ahmed Aldulaimi LinkedIn"
-            >🌍</a>
-          </div>
-          <div class="brand-subtitle">World • Markets • Jobs • AI Alerts</div>
-        </div>
-
-        <div class="topbar-actions">
-          <button id="refresh-all-btn" class="mini-btn">Refresh</button>
-          <button id="collapse-topbar-btn" class="mini-btn">—</button>
-        </div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand">YOUOOO</div>
+        <div class="subtitle">World • Markets • Jobs • AI Alerts</div>
       </div>
 
-      <div id="topbar-content">
-        <nav id="main-tabs">
-          <button class="tab-btn active" data-view="world-view">World</button>
-          <button class="tab-btn" data-view="markets-view">Markets</button>
-          <button class="tab-btn" data-view="jobs-view">Jobs</button>
-          <button class="tab-btn" data-view="ai-view">AI Alerts</button>
-        </nav>
-
-        <div class="status-row">
-          <div class="status-box">STATUS: ONLINE</div>
-          <div class="status-box">MODE: LIVE</div>
-          <div class="status-box" id="last-update-box">UPDATED: --</div>
-        </div>
-
-        <div id="market-tape">
-          <span id="market-data">Loading market data...</span>
-        </div>
+      <div class="topbar-right">
+        <div class="status-pill online">STATUS: ONLINE</div>
+        <div class="status-pill live">MODE: LIVE</div>
+        <div class="status-pill" id="updatedAt">UPDATED: --</div>
       </div>
     </header>
 
-    <aside id="sidebar" class="panel draggable">
-      <div class="panel-top">
-        <div class="sidebar-title">TACTICAL LAYERS</div>
-        <button id="collapse-sidebar-btn" class="mini-btn">—</button>
-      </div>
-
-      <div id="sidebar-content">
-        <div id="world-controls" class="view-controls active-controls">
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-earthquakes" checked />
-            <span>Earthquakes</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-aircraft" checked />
-            <span>Aircraft</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-conflicts" />
-            <span>Conflict Events</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-wildfires" />
-            <span>Wildfires</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-ships" />
-            <span>Ships (next)</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-satellites" />
-            <span>Satellites (next)</span>
-          </label>
-
-          <label class="layer-item">
-            <input type="checkbox" id="toggle-missiles" />
-            <span>Missile Alerts (next)</span>
-          </label>
-
-          <div class="section-label">Conflict Regions</div>
-
-          <label class="layer-item small">
-            <input type="checkbox" id="region-ukraine" checked />
-            <span>Ukraine</span>
-          </label>
-
-          <label class="layer-item small">
-            <input type="checkbox" id="region-middle-east" checked />
-            <span>Middle East</span>
-          </label>
-
-          <label class="layer-item small">
-            <input type="checkbox" id="region-africa" checked />
-            <span>Africa</span>
-          </label>
-
-          <div class="sidebar-note">
-            Drag this panel anywhere. Collapse it when you want more map space.
-          </div>
-        </div>
-
-        <div id="markets-controls" class="view-controls">
-          <div class="section-label">Markets Modules</div>
-          <div class="info-card slim">Market movers</div>
-          <div class="info-card slim">Sentiment radar</div>
-          <div class="info-card slim">Watchlist alerts</div>
-          <div class="info-card slim">World-to-market impact</div>
-        </div>
-
-        <div id="jobs-controls" class="view-controls">
-          <div class="section-label">Jobs / Layoff Radar</div>
-          <div class="info-card slim">Layoff tracker</div>
-          <div class="info-card slim">Hiring hotspots</div>
-          <div class="info-card slim">Company watchlist</div>
-          <div class="info-card slim">Job market alerts</div>
-        </div>
-
-        <div id="ai-controls" class="view-controls">
-          <div class="section-label">AI Alerts</div>
-          <div class="info-card slim">Model launches</div>
-          <div class="info-card slim">AI company alerts</div>
-          <div class="info-card slim">Chip / cloud news</div>
-          <div class="info-card slim">Policy / regulation</div>
-        </div>
-      </div>
-    </aside>
-
-    <aside id="alerts-panel" class="panel draggable">
-      <div class="panel-top">
-        <div class="sidebar-title">LIVE ALERTS</div>
-        <button id="collapse-alerts-btn" class="mini-btn">—</button>
-      </div>
-
-      <div id="alerts-content">
-        <div class="alert-line"><span>Earthquakes:</span> <strong id="eq-count">0</strong></div>
-        <div class="alert-line"><span>Aircraft:</span> <strong id="aircraft-count">0</strong></div>
-        <div class="alert-line"><span>Conflicts:</span> <strong id="conflict-count">0</strong></div>
-        <div class="alert-line"><span>Wildfires:</span> <strong id="fire-count">0</strong></div>
-        <div class="alert-line"><span>Ships:</span> <strong id="ships-count">next</strong></div>
-        <div class="alert-line"><span>Satellites:</span> <strong id="sat-count">next</strong></div>
-        <div class="alert-line"><span>Missiles:</span> <strong id="missile-count">next</strong></div>
-      </div>
-    </aside>
-
-    <main id="content-area">
-      <section id="world-view" class="app-view active-view">
+    <main class="layout">
+      <section class="map-section">
         <div id="map"></div>
+
+        <div class="floating-panel layers-panel">
+          <div class="panel-title-row">
+            <h3>TACTICAL LAYERS</h3>
+            <span class="mini-sep">—</span>
+          </div>
+
+          <div class="layer-grid">
+            <button class="layer-btn active" data-layer="earthquakes">Earthquakes</button>
+            <button class="layer-btn" data-layer="markets">Markets</button>
+            <button class="layer-btn" data-layer="jobs">Jobs</button>
+            <button class="layer-btn" data-layer="ai">AI Alerts</button>
+          </div>
+
+          <div class="tag-row">
+            <span class="tag">Ukraine</span>
+            <span class="tag">Middle East</span>
+            <span class="tag">Africa</span>
+          </div>
+
+          <p class="panel-note">
+            Drag panels • Toggle layers • Track world signals and market reaction.
+          </p>
+        </div>
+
+        <div class="floating-panel alerts-panel">
+          <div class="panel-title-row">
+            <h3>LIVE ALERTS</h3>
+            <span class="mini-sep">—</span>
+          </div>
+          <div id="liveAlerts" class="alerts-list">
+            <div class="empty-state">Loading alerts...</div>
+          </div>
+        </div>
       </section>
 
-      <section id="markets-view" class="app-view">
-        <div class="page-grid">
-          <div class="page-card hero">
+      <aside class="side-panel">
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="marketsTab">Markets</button>
+          <button class="tab-btn" data-tab="jobsTab">Jobs</button>
+          <button class="tab-btn" data-tab="aiTab">AI Alerts</button>
+        </nav>
+
+        <section id="marketsTab" class="tab-content active">
+          <div class="card">
             <h2>Stock Sentiment Radar</h2>
-            <p>Track macro events, price action, sector moves, and sentiment signals in one place.</p>
-          </div>
+            <p class="card-subtitle">
+              Track macro events, price action, movers, and quick watchlist signals.
+            </p>
 
-          <div class="page-card">
             <h3>Top Watchlist</h3>
-            <ul class="clean-list" id="watchlist-box">
-              <li>AMD</li>
-              <li>NVDA</li>
-              <li>SPY</li>
-              <li>QQQ</li>
-              <li>GLD</li>
-              <li>USO</li>
-            </ul>
-          </div>
+            <div id="watchlistGrid" class="watchlist-grid">
+              <div class="empty-state">Loading watchlist...</div>
+            </div>
 
-          <div class="page-card">
             <h3>Market Movers</h3>
-            <div id="market-movers-box" class="metric-stack">
-              <div class="metric-row"><span>SPY</span><strong id="mkt-spy">--</strong></div>
-              <div class="metric-row"><span>QQQ</span><strong id="mkt-qqq">--</strong></div>
-              <div class="metric-row"><span>AMD</span><strong id="mkt-amd">--</strong></div>
-              <div class="metric-row"><span>NVDA</span><strong id="mkt-nvda">--</strong></div>
+            <div id="marketMovers" class="list-block">
+              <div class="empty-state">Loading movers...</div>
+            </div>
+
+            <h3>World + Market Feed</h3>
+            <div id="marketNews" class="news-feed">
+              <div class="empty-state">Loading news...</div>
             </div>
           </div>
+        </section>
 
-          <div class="page-card wide">
-            <h3>Why this matters</h3>
-            <p>
-              This page will connect world events to stock reactions. Later we can add sector heat,
-              earnings calendar, AI sentiment summaries, and event impact scoring.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section id="jobs-view" class="app-view">
-        <div class="page-grid">
-          <div class="page-card hero">
+        <section id="jobsTab" class="tab-content">
+          <div class="card">
             <h2>Layoff Radar</h2>
-            <p>Monitor hiring slowdowns, layoffs, recruiting spikes, and company-level workforce changes.</p>
-          </div>
+            <p class="card-subtitle">
+              Monitor hiring slowdowns, layoffs, and workforce signals from major companies.
+            </p>
 
-          <div class="page-card">
             <h3>Tracked Companies</h3>
-            <ul class="clean-list">
-              <li>Google</li>
-              <li>Microsoft</li>
-              <li>Meta</li>
-              <li>Amazon</li>
-              <li>AMD</li>
-              <li>Intel</li>
-            </ul>
-          </div>
+            <div class="chips">
+              <span class="chip">Google</span>
+              <span class="chip">Microsoft</span>
+              <span class="chip">Meta</span>
+              <span class="chip">Amazon</span>
+              <span class="chip">AMD</span>
+              <span class="chip">Intel</span>
+            </div>
 
-          <div class="page-card">
-            <h3>Signals</h3>
-            <div class="metric-stack">
-              <div class="metric-row"><span>Layoff alerts</span><strong>coming soon</strong></div>
-              <div class="metric-row"><span>Hiring alerts</span><strong>coming soon</strong></div>
-              <div class="metric-row"><span>Sector stress</span><strong>coming soon</strong></div>
+            <h3>Jobs / Layoff Intelligence</h3>
+            <div id="jobsFeed" class="news-feed">
+              <div class="empty-state">Loading jobs intelligence...</div>
             </div>
           </div>
+        </section>
 
-          <div class="page-card wide">
-            <h3>Layoff + Jobs Intelligence</h3>
-            <p>
-              This module will become a live jobs intelligence layer tied to company news,
-              role demand, and regional hiring trends.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section id="ai-view" class="app-view">
-        <div class="page-grid">
-          <div class="page-card hero">
+        <section id="aiTab" class="tab-content">
+          <div class="card">
             <h2>AI Alerts</h2>
-            <p>Follow AI launches, chip demand, cloud moves, regulation, and major company updates.</p>
-          </div>
-
-          <div class="page-card">
-            <h3>Focus Areas</h3>
-            <ul class="clean-list">
-              <li>Model launches</li>
-              <li>Inference / training chips</li>
-              <li>Cloud AI competition</li>
-              <li>AI regulation</li>
-              <li>Open-source releases</li>
-            </ul>
-          </div>
-
-          <div class="page-card">
-            <h3>Tracked names</h3>
-            <ul class="clean-list">
-              <li>OpenAI</li>
-              <li>NVIDIA</li>
-              <li>AMD</li>
-              <li>Microsoft</li>
-              <li>Google</li>
-              <li>Meta</li>
-            </ul>
-          </div>
-
-          <div class="page-card wide">
-            <h3>AI Intelligence Layer</h3>
-            <p>
-              Later we can connect this page to real news feeds, launch alerts, and
-              “market impact” summaries for AI-related events.
+            <p class="card-subtitle">
+              Follow AI launches, chip demand, cloud moves, regulation, and major company updates.
             </p>
-          </div>
-        </div>
-      </section>
-    </main>
 
-    <div id="bottom-hint">
-      Drag panels • Toggle layers • Switch tabs • Move map to refresh aircraft
-    </div>
+            <div class="chips">
+              <span class="chip">OpenAI</span>
+              <span class="chip">NVIDIA</span>
+              <span class="chip">AMD</span>
+              <span class="chip">Microsoft</span>
+              <span class="chip">Google</span>
+              <span class="chip">Meta</span>
+            </div>
+
+            <h3>AI Intelligence Layer</h3>
+            <div id="aiFeed" class="news-feed">
+              <div class="empty-state">Loading AI alerts...</div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
   </div>
 
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
   <script src="script.js"></script>
 </body>
 </html>
