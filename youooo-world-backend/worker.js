@@ -1,209 +1,215 @@
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-};
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: CORS_HEADERS
-      });
+      return new Response(null, { headers: corsHeaders() });
     }
 
     try {
+      if (url.pathname === "/api/health") {
+        return json({ ok: true, product: "Youooo World API", version: "8.3" });
+      }
+
       if (url.pathname === "/api/quote") {
-        return await handleQuote(url, env);
+        const symbol = url.searchParams.get("symbol");
+        if (!symbol) return json({ error: "Missing symbol" }, 400);
+
+        const quote = await fetchTwelveDataQuote(symbol, env.TWELVE_DATA_API_KEY);
+        return json({ data: quote });
       }
 
-      if (url.pathname === "/api/candles") {
-        return await handleCandles(url, env);
+      if (url.pathname === "/api/chart") {
+        const symbol = url.searchParams.get("symbol");
+        const interval = url.searchParams.get("interval") || "1day";
+        if (!symbol) return json({ error: "Missing symbol" }, 400);
+
+        const chart = await fetchTwelveDataChart(symbol, interval, env.TWELVE_DATA_API_KEY);
+        return json(chart);
       }
 
-      if (url.pathname === "/api/alerts/subscribe" && request.method === "POST") {
-        return await handleAlertSubscribe(request, env);
+      if (url.pathname === "/api/market-snapshot") {
+        const symbols = (url.searchParams.get("symbols") || "NVDA,AAPL,TSLA,SPY,BTC/USD")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const data = await Promise.all(
+          symbols.map(async (symbol) => {
+            try {
+              return await fetchTwelveDataQuote(symbol, env.TWELVE_DATA_API_KEY);
+            } catch {
+              return {
+                symbol,
+                price: null,
+                close: null,
+                change: null,
+                percent_change: null,
+                volume: null,
+              };
+            }
+          })
+        );
+
+        return json({ data });
       }
 
-      return json(
-        { ok: false, error: "Not found", path: url.pathname },
-        { status: 404 }
-      );
+      if (url.pathname === "/api/jobs") {
+        const query = url.searchParams.get("query") || "ai";
+        const limit = Math.min(Number(url.searchParams.get("limit") || 6), 10);
+        const jobs = await fetchRemotiveJobs(query, limit);
+        return json({ jobs });
+      }
+
+      return json({ error: "Not found" }, 404);
     } catch (error) {
-      return json(
-        {
-          ok: false,
-          error: error.message || "Internal server error"
-        },
-        { status: 500 }
-      );
+      return json({
+        error: "Server error",
+        message: error instanceof Error ? error.message : String(error),
+      }, 500);
     }
-  }
+  },
 };
 
-async function handleQuote(url, env) {
-  const symbol = (url.searchParams.get("symbol") || "NVDA").trim().toUpperCase();
+async function fetchTwelveDataQuote(symbol, apiKey) {
+  const endpoint = new URL("https://api.twelvedata.com/quote");
+  endpoint.searchParams.set("symbol", symbol);
+  endpoint.searchParams.set("apikey", apiKey);
 
-  if (!env.FINNHUB_API_KEY) {
-    return json(
-      {
-        ok: false,
-        error: "FINNHUB_API_KEY is missing in backend worker secrets"
-      },
-      { status: 500 }
-    );
+  const response = await fetch(endpoint.toString());
+  const data = await response.json();
+
+  if (!response.ok || data.status === "error") {
+    throw new Error(data.message || `Quote fetch failed for ${symbol}`);
   }
 
-  const apiUrl =
-    `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}` +
-    `&token=${encodeURIComponent(env.FINNHUB_API_KEY)}`;
-
-  const res = await fetch(apiUrl);
-
-  if (!res.ok) {
-    return json(
-      {
-        ok: false,
-        error: `Finnhub quote request failed with status ${res.status}`
-      },
-      { status: 502 }
-    );
-  }
-
-  const data = await res.json();
-
-  if (data.error) {
-    return json(
-      {
-        ok: false,
-        error: data.error
-      },
-      { status: 502 }
-    );
-  }
-
-  return json(data);
+  return data;
 }
 
-async function handleCandles(url, env) {
-  const symbol = (url.searchParams.get("symbol") || "NVDA").trim().toUpperCase();
-
-  if (!env.FINNHUB_API_KEY) {
-    return json(
-      {
-        ok: false,
-        error: "FINNHUB_API_KEY is missing in backend worker secrets"
-      },
-      { status: 500 }
-    );
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  const from = now - 60 * 60 * 24 * 45;
-
-  const apiUrl =
-    `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}` +
-    `&resolution=D&from=${from}&to=${now}&token=${encodeURIComponent(env.FINNHUB_API_KEY)}`;
-
-  const res = await fetch(apiUrl);
-
-  if (!res.ok) {
-    return json(
-      {
-        ok: false,
-        error: `Finnhub candles request failed with status ${res.status}`
-      },
-      { status: 502 }
-    );
-  }
-
-  const data = await res.json();
-
-  if (data.s !== "ok" || !Array.isArray(data.c) || !Array.isArray(data.t)) {
-    return json(
-      {
-        ok: false,
-        error: "No candle data returned for this symbol"
-      },
-      { status: 404 }
-    );
-  }
-
-  const startIndex = Math.max(0, data.c.length - 30);
-  const points = data.c.slice(startIndex).map((close, i) => {
-    const ts = data.t[startIndex + i];
-    const d = new Date(ts * 1000);
-    return {
-      close,
-      ts,
-      label: `${d.getMonth() + 1}/${d.getDate()}`
-    };
-  });
-
-  return json({
-    ok: true,
-    symbol,
-    points
-  });
-}
-
-async function handleAlertSubscribe(request, env) {
-  const body = await request.json().catch(() => ({}));
-
-  const email = String(body.email || "").trim().toLowerCase();
-  const symbol = String(body.symbol || "NVDA").trim().toUpperCase();
-  const alertType = String(body.alertType || "watchlist").trim();
-
-  if (!email || !email.includes("@")) {
-    return json(
-      {
-        ok: false,
-        error: "Valid email is required"
-      },
-      { status: 400 }
-    );
-  }
-
-  if (!env.ALERTS_KV) {
-    return json(
-      {
-        ok: false,
-        error: "ALERTS_KV binding is missing in backend worker"
-      },
-      { status: 500 }
-    );
-  }
-
-  const record = {
-    email,
-    symbol,
-    alertType,
-    createdAt: new Date().toISOString()
+async function fetchTwelveDataChart(symbol, interval, apiKey) {
+  const outputsizeMap = {
+    "1day": "40",
+    "1week": "60",
+    "1month": "90",
+    "3month": "120",
   };
 
-  const key = `alert:${email}:${symbol}:${alertType}`;
-  await env.ALERTS_KV.put(key, JSON.stringify(record));
+  const endpoint = new URL("https://api.twelvedata.com/time_series");
+  endpoint.searchParams.set("symbol", symbol);
+  endpoint.searchParams.set("interval", interval);
+  endpoint.searchParams.set("outputsize", outputsizeMap[interval] || "60");
+  endpoint.searchParams.set("apikey", apiKey);
 
-  return json({
-    ok: true,
-    message: "Alert signup saved",
-    record
-  });
-}
+  const response = await fetch(endpoint.toString());
+  const data = await response.json();
 
-function json(data, init = {}) {
-  const headers = new Headers(init.headers || {});
-  headers.set("Content-Type", "application/json; charset=utf-8");
-
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    headers.set(key, value);
+  if (!response.ok || data.status === "error") {
+    throw new Error(data.message || `Chart fetch failed for ${symbol}`);
   }
 
+  return {
+    meta: data.meta || {},
+    values: Array.isArray(data.values) ? data.values : [],
+  };
+}
+
+async function fetchRemotiveJobs(query, limit) {
+  const endpoint = new URL("https://remotive.com/api/remote-jobs");
+  endpoint.searchParams.set("search", query);
+
+  const response = await fetch(endpoint.toString(), {
+    headers: {
+      "User-Agent": "Youooo-World/8.3",
+    },
+  });
+
+  if (!response.ok) {
+    return getFallbackJobs(query, limit);
+  }
+
+  const data = await response.json();
+  const jobs = Array.isArray(data.jobs) ? data.jobs.slice(0, limit) : [];
+
+  if (!jobs.length) {
+    return getFallbackJobs(query, limit);
+  }
+
+  return jobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company_name: job.company_name,
+    candidate_required_location: job.candidate_required_location,
+    url: job.url,
+  }));
+}
+
+function getFallbackJobs(query, limit) {
+  const catalog = [
+    {
+      id: "1",
+      title: "Remote AI Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Global Remote",
+      url: "https://remotive.com/remote-jobs/software-dev",
+    },
+    {
+      id: "2",
+      title: "Cloud Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Remote",
+      url: "https://remotive.com/remote-jobs/devops",
+    },
+    {
+      id: "3",
+      title: "Validation Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Hybrid / Remote",
+      url: "https://remotive.com/remote-jobs/software-dev",
+    },
+    {
+      id: "4",
+      title: "Embedded Systems Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Remote",
+      url: "https://remotive.com/remote-jobs/software-dev",
+    },
+    {
+      id: "5",
+      title: "Data Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Global Remote",
+      url: "https://remotive.com/remote-jobs/data",
+    },
+    {
+      id: "6",
+      title: "Machine Learning Engineer",
+      company_name: "Curated Feed",
+      candidate_required_location: "Remote",
+      url: "https://remotive.com/remote-jobs/software-dev",
+    },
+  ];
+
+  const filtered = catalog.filter((job) =>
+    `${job.title} ${job.company_name}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (filtered.length ? filtered : catalog).slice(0, limit);
+}
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
-    ...init,
-    headers
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      ...corsHeaders(),
+    },
   });
 }
