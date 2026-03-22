@@ -46,6 +46,10 @@ export default {
                 change: null,
                 percent_change: null,
                 volume: null,
+                high: null,
+                low: null,
+                open: null,
+                previous_close: null,
               };
             }
           })
@@ -63,10 +67,13 @@ export default {
 
       return json({ error: "Not found" }, 404);
     } catch (error) {
-      return json({
-        error: "Server error",
-        message: error instanceof Error ? error.message : String(error),
-      }, 500);
+      return json(
+        {
+          error: "Server error",
+          message: error instanceof Error ? error.message : String(error),
+        },
+        500
+      );
     }
   },
 };
