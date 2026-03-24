@@ -1,13 +1,11 @@
 const GREENHOUSE_BOARDS = [
-  // Example:
-  // { company: "OpenAI", boardToken: "openai" },
-  // { company: "Stripe", boardToken: "stripe" },
+  { company: "OpenAI", boardToken: "openai" },
+  { company: "Stripe", boardToken: "stripe" }
 ];
 
 const LEVER_SITES = [
-  // Example:
-  // { company: "Netflix", site: "netflix" },
-  // { company: "Miro", site: "miro" },
+  { company: "Netflix", site: "netflix" },
+  { company: "Miro", site: "miro" }
 ];
 
 const MANUAL_LAYOFFS = [
@@ -23,7 +21,7 @@ const MANUAL_LAYOFFS = [
     summary: "Manual placeholder until you add a verified layoffs/news pipeline.",
     roles_json: JSON.stringify({
       "Frontend Engineers": "High likelihood",
-      "ML Engineers": "Medium likelihood",
+      "ML / AI": "Medium likelihood",
       "Product / Other": "Medium likelihood"
     }),
     locations_json: JSON.stringify(["California", "New York", "Remote"]),
@@ -35,7 +33,7 @@ const MANUAL_LAYOFFS = [
       "Do not present as verified layoff count",
       "Replace with sourced event data later"
     ]),
-    best_target: "ML + Frontend",
+    best_target: "ML / AI + Frontend",
     source_name: "manual",
     source_type: "manual",
     source_url: "",
@@ -111,12 +109,18 @@ function inferBestTarget(rolesMap) {
 function keywordCategory(title, text) {
   const hay = `${title} ${text}`.toLowerCase();
 
-  if (/(machine learning|ml|ai engineer|applied scientist|research scientist|data scientist)/.test(hay)) return "ML / AI";
+  if (/(machine learning|ml|ai engineer|applied scientist|research scientist|data scientist|artificial intelligence)/.test(hay)) {
+    return "ML / AI";
+  }
   if (/(firmware|embedded|bsp|rtos)/.test(hay)) return "Firmware";
   if (/(frontend|react|ui|ux|web)/.test(hay)) return "Frontend";
   if (/(backend|api|server|distributed|platform)/.test(hay)) return "Backend";
-  if (/(cloud|infrastructure|devops|sre|site reliability|kubernetes)/.test(hay)) return "Cloud / Infra";
-  if (/(validation|verification|silicon|post-silicon|hardware|electrical|systems)/.test(hay)) return "Hardware / Validation";
+  if (/(cloud|infrastructure|devops|sre|site reliability|kubernetes)/.test(hay)) {
+    return "Cloud / Infra";
+  }
+  if (/(validation|verification|silicon|post-silicon|hardware|electrical|systems)/.test(hay)) {
+    return "Hardware / Validation";
+  }
   if (/(robotics|autonomy|controls)/.test(hay)) return "Robotics / Autonomy";
   if (/(manufacturing|operations|quality)/.test(hay)) return "Manufacturing / Quality";
 
@@ -132,7 +136,9 @@ function buildRoleMap(jobs) {
   }
 
   const total = jobs.length || 1;
-  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const sorted = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
 
   const out = {};
   for (const [role, count] of sorted) {
@@ -167,41 +173,14 @@ function buildRecruiterActions(company, rolesMap, locations) {
 }
 
 async function ensureSchema(env) {
-  const schema = `
-    CREATE TABLE IF NOT EXISTS signals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      company TEXT NOT NULL,
-      signal_type TEXT NOT NULL,
-      size_text TEXT,
-      urgency TEXT,
-      competition TEXT,
-      confidence INTEGER,
-      opportunity_score INTEGER,
-      window_text TEXT,
-      summary TEXT,
-      roles_json TEXT,
-      locations_json TEXT,
-      experience_json TEXT,
-      why_it_matters TEXT,
-      recruiter_actions_json TEXT,
-      best_target TEXT,
-      source_name TEXT,
-      source_type TEXT,
-      source_url TEXT,
-      source_timestamp TEXT,
-      refreshed_at TEXT,
-      job_count INTEGER DEFAULT 0
-    );
-
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_company_source
-    ON signals(company, source_type);
-  `;
-  await env.DB.exec(schema);
+  await env.DB
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='signals'")
+    .first();
 }
 
 async function clearDynamicSignals(env) {
   await env.DB.prepare(
-    `DELETE FROM signals WHERE source_type IN ('greenhouse', 'lever')`
+    "DELETE FROM signals WHERE source_type IN ('greenhouse', 'lever')"
   ).run();
 }
 
@@ -264,7 +243,7 @@ async function upsertSignal(env, row) {
 async function fetchGreenhouseBoard(company, boardToken) {
   const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(boardToken)}/jobs?content=true`;
   const response = await fetch(url, {
-    headers: { "accept": "application/json" }
+    headers: { accept: "application/json" }
   });
 
   if (!response.ok) {
@@ -278,7 +257,7 @@ async function fetchGreenhouseBoard(company, boardToken) {
     title: normalizeText(job.title),
     description: normalizeText(job.content),
     location: normalizeText(job.location?.name || job.offices?.[0]?.name),
-    updated_at: job.updated_at || job.absolute_url || isoNow()
+    updated_at: job.updated_at || isoNow()
   }));
 
   const rolesMap = buildRoleMap(normalizedJobs);
@@ -314,7 +293,7 @@ async function fetchGreenhouseBoard(company, boardToken) {
 async function fetchLeverSite(company, site) {
   const url = `https://api.lever.co/v0/postings/${encodeURIComponent(site)}?mode=json&limit=200`;
   const response = await fetch(url, {
-    headers: { "accept": "application/json" }
+    headers: { accept: "application/json" }
   });
 
   if (!response.ok) {
@@ -372,7 +351,7 @@ async function refreshAll(env) {
       const row = await fetchGreenhouseBoard(item.company, item.boardToken);
       await upsertSignal(env, row);
     } catch (error) {
-      console.error(error);
+      console.error(`Greenhouse error for ${item.company}:`, error.message);
     }
   }
 
@@ -381,7 +360,7 @@ async function refreshAll(env) {
       const row = await fetchLeverSite(item.company, item.site);
       await upsertSignal(env, row);
     } catch (error) {
-      console.error(error);
+      console.error(`Lever error for ${item.company}:`, error.message);
     }
   }
 
@@ -449,6 +428,7 @@ export default {
           return json({ ok: false, error: "Unauthorized" }, 401);
         }
       }
+
       const result = await refreshAll(env);
       return json(result);
     }
