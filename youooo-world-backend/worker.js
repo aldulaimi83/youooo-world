@@ -1,12 +1,8 @@
 const GREENHOUSE_BOARDS = [
-  { company: "OpenAI", boardToken: "openai" },
   { company: "Stripe", boardToken: "stripe" }
 ];
 
-const LEVER_SITES = [
-  { company: "Netflix", site: "netflix" },
-  { company: "Miro", site: "miro" }
-];
+const LEVER_SITES = [];
 
 const MANUAL_LAYOFFS = [
   {
@@ -64,8 +60,12 @@ function isoNow() {
 
 function daysAgoText(dateString) {
   if (!dateString) return "unknown";
-  const ms = Date.now() - new Date(dateString).getTime();
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return "unknown";
+
+  const ms = Date.now() - parsed.getTime();
   const days = Math.floor(ms / 86400000);
+
   if (days <= 0) return "today";
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
@@ -73,8 +73,12 @@ function daysAgoText(dateString) {
 
 function inferUrgency(dateString) {
   if (!dateString) return "Active";
-  const ms = Date.now() - new Date(dateString).getTime();
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return "Active";
+
+  const ms = Date.now() - parsed.getTime();
   const days = Math.floor(ms / 86400000);
+
   if (days <= 7) return "Fresh";
   if (days <= 21) return "Active";
   return "Old";
@@ -102,27 +106,43 @@ function inferSignalType(jobCount) {
 }
 
 function inferBestTarget(rolesMap) {
-  const keys = Object.keys(rolesMap);
+  const keys = Object.keys(rolesMap || {});
   return keys.slice(0, 2).join(" + ") || "General Engineering";
 }
 
 function keywordCategory(title, text) {
-  const hay = `${title} ${text}`.toLowerCase();
+  const t = `${title || ""}`.toLowerCase();
+  const d = `${text || ""}`.toLowerCase();
 
-  if (/(machine learning|ml|ai engineer|applied scientist|research scientist|data scientist|artificial intelligence)/.test(hay)) {
+  if (/(frontend|front-end|react|ui engineer|web engineer|ux engineer)/.test(t)) {
+    return "Frontend";
+  }
+  if (/(backend|back-end|api|platform engineer|server|distributed systems)/.test(t)) {
+    return "Backend";
+  }
+  if (/(machine learning|ml engineer|ai engineer|research scientist|data scientist|applied scientist)/.test(t)) {
     return "ML / AI";
   }
-  if (/(firmware|embedded|bsp|rtos)/.test(hay)) return "Firmware";
-  if (/(frontend|react|ui|ux|web)/.test(hay)) return "Frontend";
-  if (/(backend|api|server|distributed|platform)/.test(hay)) return "Backend";
-  if (/(cloud|infrastructure|devops|sre|site reliability|kubernetes)/.test(hay)) {
+  if (/(firmware|embedded|bsp|rtos)/.test(t)) {
+    return "Firmware";
+  }
+  if (/(cloud|infrastructure|infra|devops|sre|site reliability|kubernetes)/.test(t)) {
     return "Cloud / Infra";
   }
-  if (/(validation|verification|silicon|post-silicon|hardware|electrical|systems)/.test(hay)) {
+  if (/(hardware|validation|verification|silicon|post-silicon|electrical|systems engineer)/.test(t)) {
     return "Hardware / Validation";
   }
-  if (/(robotics|autonomy|controls)/.test(hay)) return "Robotics / Autonomy";
-  if (/(manufacturing|operations|quality)/.test(hay)) return "Manufacturing / Quality";
+  if (/(robotics|autonomy|controls)/.test(t)) {
+    return "Robotics / Autonomy";
+  }
+  if (/(manufacturing|operations|quality)/.test(t)) {
+    return "Manufacturing / Quality";
+  }
+
+  if (/(machine learning|artificial intelligence|ai)/.test(d)) return "ML / AI";
+  if (/(cloud|infrastructure|kubernetes|devops|sre)/.test(d)) return "Cloud / Infra";
+  if (/(frontend|react|web)/.test(d)) return "Frontend";
+  if (/(backend|api|server|platform)/.test(d)) return "Backend";
 
   return "Other";
 }
@@ -162,8 +182,8 @@ function buildLocationList(jobs) {
 }
 
 function buildRecruiterActions(company, rolesMap, locations) {
-  const topRoles = Object.keys(rolesMap).slice(0, 2);
-  const topLocs = locations.slice(0, 2);
+  const topRoles = Object.keys(rolesMap || {}).slice(0, 2);
+  const topLocs = (locations || []).slice(0, 2);
 
   return [
     `Target ${topRoles.join(" and ") || "top candidates"} first`,
@@ -180,7 +200,7 @@ async function ensureSchema(env) {
 
 async function clearDynamicSignals(env) {
   await env.DB.prepare(
-    "DELETE FROM signals WHERE source_type IN ('greenhouse', 'lever')"
+    "DELETE FROM signals WHERE source_type IN ('greenhouse', 'lever', 'manual')"
   ).run();
 }
 
@@ -320,7 +340,7 @@ async function fetchLeverSite(company, site) {
     confidence: 90,
     opportunity_score: inferOpportunityScore(normalizedJobs.length, "lever"),
     window_text: normalizedJobs.length >= 30 ? "Open now" : "Selective window",
-    summary: `Live public jobs data from Lever with ${normalizedJobs.length} current postings.`,
+    summary: `Live public job-posting data from Lever with ${normalizedJobs.length} current postings.`,
     roles_json: JSON.stringify(rolesMap),
     locations_json: JSON.stringify(locations),
     experience_json: JSON.stringify(["Mixed experience levels"]),
