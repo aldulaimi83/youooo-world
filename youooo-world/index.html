@@ -1,29 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Youooo Talent</title>
-  <link rel="stylesheet" href="style.css">
+  <meta
+    name="description"
+    content="Youooo Talent — recruiter-focused talent shock radar."
+  />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+  <div class="page-bg"></div>
 
-  <header>
-    <h1>🚀 Youooo Talent</h1>
-    <p>Real-time Talent Shock Radar for Recruiters</p>
-  </header>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-icon">🚀</div>
+        <div class="brand-copy">
+          <strong>Youooo Talent</strong>
+          <span>Talent Shock Radar for Recruiters</span>
+        </div>
+      </div>
 
-  <section id="signals">
-    <h2>🔥 Latest Talent Shocks</h2>
-    <div id="signalsContainer"></div>
-  </section>
+      <div class="topbar-right">
+        <div class="status-pill">Recruiter View</div>
+      </div>
+    </header>
 
-  <section id="details">
-    <h2>📊 Talent Breakdown</h2>
-    <div id="detailsContainer">
-      <p>Select a company to view details</p>
-    </div>
-  </section>
+    <main class="main-grid">
+      <section class="hero glass">
+        <div class="hero-copy">
+          <p class="eyebrow">Recruiting Intelligence</p>
+          <h1>Find fresh talent pools before everyone else.</h1>
+          <p class="hero-text">
+            Track layoffs, hiring freezes, and hiring surges. Click any signal to
+            see where talent is available, which roles matter, and how to act on it.
+          </p>
+        </div>
 
-  <script src="script.js"></script>
+        <div class="hero-metrics">
+          <div class="metric-card">
+            <span class="metric-label">Tracked Signals</span>
+            <strong id="trackedSignalsCount">0</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Fresh Windows</span>
+            <strong id="freshWindowsCount">0</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Best Target</span>
+            <strong id="bestTargetText">—</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="signals-panel glass">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Live Board</p>
+            <h2>Latest Talent Shocks</h2>
+          </div>
+          <div class="section-note">Click a signal to inspect the talent pool</div>
+        </div>
+
+        <div id="signalsContainer" class="signals-grid"></div>
+      </section>
+
+      <section class="details-panel glass">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Signal Intelligence</p>
+            <h2>Talent Breakdown</h2>
+          </div>
+          <div id="detailsStatus" class="section-note">Waiting for selection</div>
+        </div>
+
+        <div id="detailsContainer" class="details-empty">
+          <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>Select a company</h3>
+            <p>Review roles, locations, timing, and recruiter actions.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./script.js"></script>
 </body>
 </html>
