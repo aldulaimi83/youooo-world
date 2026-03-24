@@ -1,90 +1,4 @@
-const signals = [
-  {
-    company: "Meta",
-    type: "Layoffs",
-    size: "2,000 employees",
-    urgency: "Fresh",
-    timestamp: "3 days ago",
-    competition: "Low",
-    confidence: 88,
-    opportunityScore: 91,
-    window: "2–4 weeks",
-    summary: "Strong short-term access to AR/VR, frontend, and ML talent.",
-    roles: {
-      "Frontend Engineers": "35%",
-      "ML Engineers": "25%",
-      "Backend Engineers": "20%",
-      "Product / Other": "20%"
-    },
-    locations: ["California", "New York", "Remote"],
-    experience: ["3–5 years", "5–8 years"],
-    whyItMatters:
-      "Short window where talent is available and not yet saturated by recruiter outreach.",
-    recruiterActions: [
-      "Target ML and frontend engineers first",
-      "Focus on California and Remote candidates",
-      "Prioritize 3–8 year experience"
-    ],
-    outreach:
-      "Hi, I noticed your experience at Meta. We're working with teams hiring ML and frontend engineers right now. Would love to connect if you're open to new opportunities."
-  },
-  {
-    company: "Google",
-    type: "Hiring Freeze",
-    size: "Partial freeze",
-    urgency: "Active",
-    timestamp: "1 week ago",
-    competition: "Medium",
-    confidence: 74,
-    opportunityScore: 73,
-    window: "3–6 weeks",
-    summary: "Passive talent movement due to internal slowdowns.",
-    roles: {
-      "Cloud Engineers": "40%",
-      "AI": "30%",
-      "Infra": "30%"
-    },
-    locations: ["US", "EU", "Remote"],
-    experience: ["5+ years"],
-    whyItMatters:
-      "Hiring freezes often trigger early talent movement before layoffs.",
-    recruiterActions: [
-      "Use soft outreach",
-      "Target senior cloud talent",
-      "Monitor over 2–6 weeks"
-    ],
-    outreach:
-      "Hi, I wanted to reach out as we're seeing movement in cloud and infrastructure roles. Your background at Google is highly relevant—open to a quick chat?"
-  },
-  {
-    company: "Tesla",
-    type: "Hiring Surge",
-    size: "1,500+ openings",
-    urgency: "Fresh",
-    timestamp: "2 days ago",
-    competition: "Rising",
-    confidence: 81,
-    opportunityScore: 81,
-    window: "Ongoing",
-    summary: "High demand for manufacturing, robotics, and firmware.",
-    roles: {
-      "Manufacturing": "50%",
-      "AI / Robotics": "30%",
-      "Firmware": "20%"
-    },
-    locations: ["Texas", "California"],
-    experience: ["2–6 years"],
-    whyItMatters:
-      "Demand spike means future talent shortage and higher competition.",
-    recruiterActions: [
-      "Source early before demand spikes",
-      "Focus on firmware talent",
-      "Watch Texas market closely"
-    ],
-    outreach:
-      "Hi, we're seeing increased demand in robotics and firmware. Your Tesla experience stands out—would you be open to exploring new roles?"
-  }
-];
+const API_BASE = "https://youooo-world-api.youooo.workers.dev";
 
 const signalsContainer = document.getElementById("signalsContainer");
 const detailsContainer = document.getElementById("detailsContainer");
@@ -93,74 +7,213 @@ const trackedSignalsCount = document.getElementById("trackedSignalsCount");
 const freshWindowsCount = document.getElementById("freshWindowsCount");
 const bestTargetText = document.getElementById("bestTargetText");
 
+let signals = [];
 let activeCompany = null;
 
+function getTypeClass(type) {
+  if (type === "Layoffs") return "pill-type-layoff";
+  if (type === "Hiring Freeze") return "pill-type-freeze";
+  return "pill-type-surge";
+}
+
+function getUrgencyClass(urgency) {
+  if (urgency === "Fresh") return "pill-fresh";
+  if (urgency === "Active") return "pill-active";
+  return "pill-old";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function updateHeroMetrics() {
-  trackedSignalsCount.textContent = signals.length;
-  freshWindowsCount.textContent = signals.filter(s => s.urgency === "Fresh").length;
-  bestTargetText.textContent = signals[0].company;
+  trackedSignalsCount.textContent = String(signals.length);
+  freshWindowsCount.textContent = String(
+    signals.filter((item) => item.urgency === "Fresh").length
+  );
+  bestTargetText.textContent = signals[0]?.bestTarget || "—";
 }
 
 function renderSignals() {
   signalsContainer.innerHTML = "";
 
-  signals.forEach(signal => {
-    const card = document.createElement("div");
-    card.className = "signal-card";
+  signals.forEach((signal) => {
+    const card = document.createElement("article");
+    card.className = `signal-card${activeCompany === signal.company ? " active" : ""}`;
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Open details for ${signal.company}`);
 
     card.innerHTML = `
-      <h3>${signal.company}</h3>
-      <p>${signal.type} • ${signal.timestamp}</p>
-      <p>${signal.size}</p>
-      <p>⚡ ${signal.urgency} • Competition: ${signal.competition}</p>
-      <p>${signal.summary}</p>
+      <div class="signal-top">
+        <div>
+          <h3 class="signal-company">${escapeHtml(signal.company)}</h3>
+          <p class="signal-size">${escapeHtml(signal.size)}</p>
+        </div>
+      </div>
+
+      <div class="signal-row">
+        <span class="pill ${getTypeClass(signal.type)}">${escapeHtml(signal.type)}</span>
+        <span class="pill ${getUrgencyClass(signal.urgency)}">${escapeHtml(signal.urgency)}</span>
+      </div>
+
+      <p class="signal-summary">${escapeHtml(signal.summary)}</p>
+      <p class="signal-summary" style="margin-top:10px;">
+        Source: ${escapeHtml(signal.sourceName)} • Updated: ${escapeHtml(signal.timestamp)}
+      </p>
+      <p class="signal-summary" style="margin-top:6px;">
+        Confidence: ${escapeHtml(signal.confidence)}% • Competition: ${escapeHtml(signal.competition)}
+      </p>
     `;
 
-    card.onclick = () => renderDetails(signal);
+    card.addEventListener("click", () => {
+      activeCompany = signal.company;
+      renderSignals();
+      renderDetails(signal);
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        activeCompany = signal.company;
+        renderSignals();
+        renderDetails(signal);
+      }
+    });
 
     signalsContainer.appendChild(card);
   });
 }
 
+function renderRoleList(roles) {
+  return Object.entries(roles || {})
+    .map(([role, value]) => `<li><strong>${escapeHtml(role)}:</strong> ${escapeHtml(value)}</li>`)
+    .join("");
+}
+
+function renderActionList(actions) {
+  return (actions || [])
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+}
+
+async function copyOutreach(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("Outreach copied");
+  } catch {
+    alert("Copy failed");
+  }
+}
+
 function renderDetails(signal) {
   detailsStatus.textContent = `${signal.company} selected`;
 
-  const rolesHTML = Object.entries(signal.roles)
-    .map(([k, v]) => `<li>${k}: ${v}</li>`)
-    .join("");
-
-  const actionsHTML = signal.recruiterActions
-    .map(a => `<li>${a}</li>`)
-    .join("");
-
+  detailsContainer.className = "";
   detailsContainer.innerHTML = `
-    <h3>${signal.company}</h3>
-    <p><strong>Signal:</strong> ${signal.type}</p>
-    <p><strong>Time:</strong> ${signal.timestamp}</p>
-    <p><strong>Opportunity Score:</strong> ${signal.opportunityScore}</p>
-    <p><strong>Confidence:</strong> ${signal.confidence}%</p>
-    <p><strong>Competition:</strong> ${signal.competition}</p>
-    <p><strong>Window:</strong> ${signal.window}</p>
+    <div class="details-card">
+      <div class="details-hero">
+        <div class="details-title">
+          <h3>${escapeHtml(signal.company)}</h3>
+          <div class="details-subtitle">
+            ${escapeHtml(signal.type)} • ${escapeHtml(signal.urgency)} window • ${escapeHtml(signal.size)}
+          </div>
+        </div>
+        <div class="score-box">
+          <span class="score-label">Opportunity Score</span>
+          <div class="score-value">${escapeHtml(signal.opportunityScore)}</div>
+        </div>
+      </div>
 
-    <h4>Roles</h4>
-    <ul>${rolesHTML}</ul>
+      <div class="details-grid">
+        <div class="info-block">
+          <h4>Role Breakdown</h4>
+          <ul class="role-list">
+            ${renderRoleList(signal.roles)}
+          </ul>
+        </div>
 
-    <h4>Why This Matters</h4>
-    <p>${signal.whyItMatters}</p>
+        <div class="info-block">
+          <h4>Signal Meta</h4>
+          <ul class="meta-list">
+            <li><strong>Locations:</strong> ${escapeHtml((signal.locations || []).join(", "))}</li>
+            <li><strong>Experience:</strong> ${escapeHtml((signal.experience || []).join(", "))}</li>
+            <li><strong>Best target:</strong> ${escapeHtml(signal.bestTarget)}</li>
+            <li><strong>Source:</strong> ${escapeHtml(signal.sourceName)}</li>
+            <li><strong>Source updated:</strong> ${escapeHtml(signal.timestamp)}</li>
+            <li><strong>Confidence:</strong> ${escapeHtml(signal.confidence)}%</li>
+            <li><strong>Competition:</strong> ${escapeHtml(signal.competition)}</li>
+            <li><strong>Window:</strong> ${escapeHtml(signal.window)}</li>
+            <li><strong>Open roles:</strong> ${escapeHtml(signal.jobCount)}</li>
+          </ul>
+        </div>
 
-    <h4>Recruiter Actions</h4>
-    <ul>${actionsHTML}</ul>
+        <div class="highlight-box">
+          <h4>Why This Matters</h4>
+          <p>${escapeHtml(signal.whyItMatters)}</p>
+        </div>
 
-    <button onclick="copyOutreach('${signal.outreach.replace(/'/g, "\\'")}')">
-      💼 Copy Outreach Message
-    </button>
+        <div class="cta-box">
+          <h4>Recruiter Action</h4>
+          <ul class="action-list">
+            ${renderActionList(signal.recruiterActions)}
+          </ul>
+          <div style="margin-top: 14px;">
+            <button id="copyOutreachBtn" style="
+              border: 0;
+              border-radius: 12px;
+              padding: 12px 14px;
+              cursor: pointer;
+              font-weight: 700;
+            ">💼 Copy Outreach Message</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+
+  const btn = document.getElementById("copyOutreachBtn");
+  if (btn) {
+    btn.addEventListener("click", () => copyOutreach(signal.outreach));
+  }
 }
 
-function copyOutreach(text) {
-  navigator.clipboard.writeText(text);
-  alert("Outreach copied");
+function renderEmptyState(message = "No signals available") {
+  detailsStatus.textContent = "Waiting for data";
+  signalsContainer.innerHTML = `<div class="empty-state"><h3>${escapeHtml(message)}</h3></div>`;
 }
 
-updateHeroMetrics();
-renderSignals();
+async function loadSignals() {
+  try {
+    const response = await fetch(`${API_BASE}/api/signals`);
+    if (!response.ok) {
+      throw new Error(`API failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    signals = Array.isArray(payload.signals) ? payload.signals : [];
+
+    if (!signals.length) {
+      renderEmptyState("No live signals yet");
+      updateHeroMetrics();
+      return;
+    }
+
+    updateHeroMetrics();
+    renderSignals();
+
+    activeCompany = signals[0].company;
+    renderSignals();
+    renderDetails(signals[0]);
+  } catch (error) {
+    console.error(error);
+    renderEmptyState("Failed to load live data");
+  }
+}
+
+loadSignals();
