@@ -1,12 +1,24 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "youooo-world-api",
   "main": "worker.js",
-  "compatibility_date": "2026-03-20",
-  "kv_namespaces": [
+  "compatibility_date": "2026-03-23",
+  "observability": {
+    "enabled": true
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
     {
-      "binding": "ALERTS_KV",
-      "id": "9bff93e95f47473e8c76a4a8d7692a63",
-      "preview_id": "7ff5fa2d5cb34838b056e7955366f2ef"
+      "binding": "DB",
+      "database_name": "youooo-talent-db",
+      "database_id": "da282532-fa22-4443-b323-7da8e8fa5a7a"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "0 */6 * * *"
+    ]
+  }
 }
