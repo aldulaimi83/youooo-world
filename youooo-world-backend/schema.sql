@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS signals (
   why_it_matters TEXT,
   recruiter_actions_json TEXT,
   best_target TEXT,
+  recruiter_brief TEXT,
   source_name TEXT,
   source_type TEXT,
   source_url TEXT,
@@ -25,3 +26,14 @@ CREATE TABLE IF NOT EXISTS signals (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_company_source
 ON signals(company, source_type);
+
+CREATE TABLE IF NOT EXISTS signal_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  company TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  job_count INTEGER NOT NULL,
+  captured_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_signal_history_company_source_time
+ON signal_history(company, source_type, captured_at DESC);

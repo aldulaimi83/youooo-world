@@ -30,6 +30,8 @@ const MANUAL_LAYOFFS = [
       "Replace with sourced event data later"
     ]),
     best_target: "ML / AI + Frontend",
+    recruiter_brief:
+      "Treat this as a watchlist signal for sourcing strategy only. Do not use it as a verified event count.",
     source_name: "manual",
     source_type: "manual",
     source_url: "",
@@ -58,10 +60,15 @@ function isoNow() {
   return new Date().toISOString();
 }
 
-function daysAgoText(dateString) {
-  if (!dateString) return "unknown";
+function parseDateSafe(dateString) {
   const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return "unknown";
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function daysAgoText(dateString) {
+  const parsed = parseDateSafe(dateString);
+  if (!parsed) return "unknown";
 
   const ms = Date.now() - parsed.getTime();
   const days = Math.floor(ms / 86400000);
@@ -72,9 +79,8 @@ function daysAgoText(dateString) {
 }
 
 function inferUrgency(dateString) {
-  if (!dateString) return "Active";
-  const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return "Active";
+  const parsed = parseDateSafe(dateString);
+  if (!parsed) return "Active";
 
   const ms = Date.now() - parsed.getTime();
   const days = Math.floor(ms / 86400000);
@@ -88,15 +94,6 @@ function inferCompetition(jobCount) {
   if (jobCount >= 100) return "High";
   if (jobCount >= 30) return "Medium";
   return "Low";
-}
-
-function inferOpportunityScore(jobCount, sourceType) {
-  let score = 50;
-  if (sourceType === "greenhouse" || sourceType === "lever") score += 10;
-  if (jobCount >= 100) score += 25;
-  else if (jobCount >= 30) score += 18;
-  else if (jobCount >= 10) score += 10;
-  return Math.min(score, 95);
 }
 
 function inferSignalType(jobCount) {
@@ -192,10 +189,87 @@ function buildRecruiterActions(company, rolesMap, locations) {
   ];
 }
 
+function inferTrend(previousCount, currentCount, signalType) {
+  if (signalType === "Layoffs") {
+    return {
+      direction: "watch",
+      label: "Talent release watch",
+      deltaPercent: 0
+    };
+  }
+
+  if (previousCount == null || previousCount <= 0) {
+    return {
+      direction: "watch",
+      label: currentCount > 0 ? "New live signal" : "Watch",
+      deltaPercent: 0
+    };
+  }
+
+  const delta = currentCount - previousCount;
+  const deltaPercent = Math.round((delta / previousCount) * 100);
+
+  if (deltaPercent >= 10) {
+    return { direction: "up", label: `Up ${deltaPercent}%`, deltaPercent };
+  }
+  if (deltaPercent <= -10) {
+    return { direction: "down", label: `Down ${Math.abs(deltaPercent)}%`, deltaPercent };
+  }
+
+  return { direction: "flat", label: "Flat", deltaPercent };
+}
+
+function computeOpportunityScore({
+  jobCount,
+  sourceType,
+  confidence,
+  urgency,
+  competition,
+  trendDirection,
+  trendDeltaPercent,
+  signalType
+}) {
+  let score = 35;
+
+  if (sourceType === "greenhouse" || sourceType === "lever") score += 10;
+  score += Math.min(25, Math.floor((jobCount || 0) / 8));
+  score += Math.round((confidence || 0) / 10);
+
+  if (urgency === "Fresh") score += 8;
+  else if (urgency === "Active") score += 4;
+
+  if (competition === "Low") score += 8;
+  else if (competition === "Medium") score += 4;
+
+  if (trendDirection === "up") score += Math.min(10, Math.floor(Math.abs(trendDeltaPercent || 0) / 5));
+  if (trendDirection === "down") score -= 4;
+
+  if (signalType === "Layoffs") score += 6;
+
+  return Math.max(1, Math.min(99, score));
+}
+
+function buildRecruiterBrief({
+  company,
+  signalType,
+  jobCount,
+  locations,
+  rolesMap,
+  trend
+}) {
+  const topRoles = Object.keys(rolesMap || {}).slice(0, 2).join(" + ") || "general roles";
+  const topLocations = (locations || []).slice(0, 2).join(" and ") || "priority markets";
+
+  if (signalType === "Layoffs") {
+    return `${company} is on manual layoff watch. Use it as a sourcing watchlist for ${topRoles} talent in ${topLocations}, but do not treat it as verified event volume.`;
+  }
+
+  return `${company} currently shows ${jobCount} open roles with strongest concentration in ${topRoles}. Focus recruiter attention on ${topLocations}. Current trend: ${trend.label}.`;
+}
+
 async function ensureSchema(env) {
-  await env.DB
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='signals'")
-    .first();
+  await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='signals'").first();
+  await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='signal_history'").first();
 }
 
 async function clearDynamicSignals(env) {
@@ -204,15 +278,33 @@ async function clearDynamicSignals(env) {
   ).run();
 }
 
+async function insertHistorySnapshot(env, company, sourceType, jobCount) {
+  await env.DB.prepare(
+    "INSERT INTO signal_history (company, source_type, job_count, captured_at) VALUES (?, ?, ?, ?)"
+  ).bind(company, sourceType, jobCount, isoNow()).run();
+}
+
+async function getPreviousSnapshot(env, company, sourceType) {
+  const row = await env.DB.prepare(`
+    SELECT job_count, captured_at
+    FROM signal_history
+    WHERE company = ? AND source_type = ?
+    ORDER BY captured_at DESC
+    LIMIT 1 OFFSET 1
+  `).bind(company, sourceType).first();
+
+  return row || null;
+}
+
 async function upsertSignal(env, row) {
   const sql = `
     INSERT INTO signals (
       company, signal_type, size_text, urgency, competition, confidence,
       opportunity_score, window_text, summary, roles_json, locations_json,
       experience_json, why_it_matters, recruiter_actions_json, best_target,
-      source_name, source_type, source_url, source_timestamp, refreshed_at, job_count
+      recruiter_brief, source_name, source_type, source_url, source_timestamp, refreshed_at, job_count
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company, source_type) DO UPDATE SET
       signal_type = excluded.signal_type,
       size_text = excluded.size_text,
@@ -228,6 +320,7 @@ async function upsertSignal(env, row) {
       why_it_matters = excluded.why_it_matters,
       recruiter_actions_json = excluded.recruiter_actions_json,
       best_target = excluded.best_target,
+      recruiter_brief = excluded.recruiter_brief,
       source_name = excluded.source_name,
       source_url = excluded.source_url,
       source_timestamp = excluded.source_timestamp,
@@ -251,6 +344,7 @@ async function upsertSignal(env, row) {
     row.why_it_matters,
     row.recruiter_actions_json,
     row.best_target,
+    row.recruiter_brief,
     row.source_name,
     row.source_type,
     row.source_url,
@@ -290,7 +384,6 @@ async function fetchGreenhouseBoard(company, boardToken) {
     urgency: "Fresh",
     competition: inferCompetition(normalizedJobs.length),
     confidence: 92,
-    opportunity_score: inferOpportunityScore(normalizedJobs.length, "greenhouse"),
     window_text: normalizedJobs.length >= 30 ? "Open now" : "Selective window",
     summary: `Live public jobs data from Greenhouse with ${normalizedJobs.length} current postings.`,
     roles_json: JSON.stringify(rolesMap),
@@ -302,11 +395,14 @@ async function fetchGreenhouseBoard(company, boardToken) {
       buildRecruiterActions(company, rolesMap, locations)
     ),
     best_target: inferBestTarget(rolesMap),
+    recruiter_brief: "",
     source_name: "Greenhouse",
     source_type: "greenhouse",
     source_url: url,
     source_timestamp: isoNow(),
-    job_count: normalizedJobs.length
+    job_count: normalizedJobs.length,
+    roles_map: rolesMap,
+    locations
   };
 }
 
@@ -338,7 +434,6 @@ async function fetchLeverSite(company, site) {
     urgency: inferUrgency(normalizedJobs[0]?.updated_at || isoNow()),
     competition: inferCompetition(normalizedJobs.length),
     confidence: 90,
-    opportunity_score: inferOpportunityScore(normalizedJobs.length, "lever"),
     window_text: normalizedJobs.length >= 30 ? "Open now" : "Selective window",
     summary: `Live public job-posting data from Lever with ${normalizedJobs.length} current postings.`,
     roles_json: JSON.stringify(rolesMap),
@@ -350,25 +445,61 @@ async function fetchLeverSite(company, site) {
       buildRecruiterActions(company, rolesMap, locations)
     ),
     best_target: inferBestTarget(rolesMap),
+    recruiter_brief: "",
     source_name: "Lever",
     source_type: "lever",
     source_url: url,
     source_timestamp: isoNow(),
-    job_count: normalizedJobs.length
+    job_count: normalizedJobs.length,
+    roles_map: rolesMap,
+    locations
   };
+}
+
+async function prepareScoredRow(env, row) {
+  const previous = await getPreviousSnapshot(env, row.company, row.source_type);
+  const trend = inferTrend(previous?.job_count ?? null, row.job_count, row.signal_type);
+
+  row.opportunity_score = computeOpportunityScore({
+    jobCount: row.job_count,
+    sourceType: row.source_type,
+    confidence: row.confidence,
+    urgency: row.urgency,
+    competition: row.competition,
+    trendDirection: trend.direction,
+    trendDeltaPercent: trend.deltaPercent,
+    signalType: row.signal_type
+  });
+
+  row.recruiter_brief = buildRecruiterBrief({
+    company: row.company,
+    signalType: row.signal_type,
+    jobCount: row.job_count,
+    locations: row.locations || JSON.parse(row.locations_json || "[]"),
+    rolesMap: row.roles_map || JSON.parse(row.roles_json || "{}"),
+    trend
+  });
+
+  await insertHistorySnapshot(env, row.company, row.source_type, row.job_count);
+  return row;
 }
 
 async function refreshAll(env) {
   await ensureSchema(env);
   await clearDynamicSignals(env);
 
-  for (const row of MANUAL_LAYOFFS) {
+  for (const baseRow of MANUAL_LAYOFFS) {
+    const row = await prepareScoredRow(env, {
+      ...baseRow,
+      source_timestamp: isoNow()
+    });
     await upsertSignal(env, row);
   }
 
   for (const item of GREENHOUSE_BOARDS) {
     try {
-      const row = await fetchGreenhouseBoard(item.company, item.boardToken);
+      const baseRow = await fetchGreenhouseBoard(item.company, item.boardToken);
+      const row = await prepareScoredRow(env, baseRow);
       await upsertSignal(env, row);
     } catch (error) {
       console.error(`Greenhouse error for ${item.company}:`, error.message);
@@ -377,7 +508,8 @@ async function refreshAll(env) {
 
   for (const item of LEVER_SITES) {
     try {
-      const row = await fetchLeverSite(item.company, item.site);
+      const baseRow = await fetchLeverSite(item.company, item.site);
+      const row = await prepareScoredRow(env, baseRow);
       await upsertSignal(env, row);
     } catch (error) {
       console.error(`Lever error for ${item.company}:`, error.message);
@@ -396,31 +528,44 @@ async function getSignals(env) {
     ORDER BY opportunity_score DESC, job_count DESC, company ASC
   `).all();
 
-  return (results || []).map((row) => ({
-    company: row.company,
-    type: row.signal_type,
-    size: row.size_text,
-    urgency: row.urgency,
-    timestamp: daysAgoText(row.source_timestamp),
-    competition: row.competition,
-    confidence: row.confidence,
-    opportunityScore: row.opportunity_score,
-    window: row.window_text,
-    summary: row.summary,
-    roles: JSON.parse(row.roles_json || "{}"),
-    locations: JSON.parse(row.locations_json || "[]"),
-    experience: JSON.parse(row.experience_json || "[]"),
-    whyItMatters: row.why_it_matters,
-    recruiterActions: JSON.parse(row.recruiter_actions_json || "[]"),
-    bestTarget: row.best_target,
-    sourceName: row.source_name,
-    sourceType: row.source_type,
-    sourceUrl: row.source_url,
-    sourceTimestamp: row.source_timestamp,
-    refreshedAt: row.refreshed_at,
-    jobCount: row.job_count,
-    outreach: `Hi, I’m reaching out because we’re tracking fresh movement and hiring signals around ${row.company}. Your background looks relevant for current openings in ${row.best_target || "priority areas"}. Open to a quick conversation?`
-  }));
+  const output = [];
+
+  for (const row of results || []) {
+    const previous = await getPreviousSnapshot(env, row.company, row.source_type);
+    const trend = inferTrend(previous?.job_count ?? null, row.job_count, row.signal_type);
+
+    output.push({
+      company: row.company,
+      type: row.signal_type,
+      size: row.size_text,
+      urgency: row.urgency,
+      timestamp: daysAgoText(row.source_timestamp),
+      competition: row.competition,
+      confidence: row.confidence,
+      opportunityScore: row.opportunity_score,
+      window: row.window_text,
+      summary: row.summary,
+      roles: JSON.parse(row.roles_json || "{}"),
+      locations: JSON.parse(row.locations_json || "[]"),
+      experience: JSON.parse(row.experience_json || "[]"),
+      whyItMatters: row.why_it_matters,
+      recruiterActions: JSON.parse(row.recruiter_actions_json || "[]"),
+      bestTarget: row.best_target,
+      recruiterBrief: row.recruiter_brief || "",
+      sourceName: row.source_name,
+      sourceType: row.source_type,
+      sourceUrl: row.source_url,
+      sourceTimestamp: row.source_timestamp,
+      refreshedAt: row.refreshed_at,
+      jobCount: row.job_count,
+      trendDirection: trend.direction,
+      trendLabel: trend.label,
+      trendDeltaPercent: trend.deltaPercent,
+      outreach: `Hi, I’m reaching out because we’re tracking fresh movement and hiring signals around ${row.company}. Your background looks relevant for current openings in ${row.best_target || "priority areas"}. Open to a quick conversation?`
+    });
+  }
+
+  return output;
 }
 
 export default {
