@@ -8,6 +8,7 @@
     name="description"
     content="Youooo Talent — recruiter-focused talent shock radar."
   />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -24,6 +25,7 @@
       </div>
 
       <div class="topbar-right">
+        <button id="watchlistBtn" class="watchlist-trigger-btn">🔔 My Watchlist</button>
         <div class="status-pill">Recruiter View</div>
       </div>
     </header>
@@ -53,6 +55,17 @@
             <strong id="bestTargetText">—</strong>
           </div>
         </div>
+      </section>
+
+      <section class="map-panel glass">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Global View</p>
+            <h2>Live Talent Map</h2>
+          </div>
+          <div class="section-note">Pinned signals by location</div>
+        </div>
+        <div id="talentMap"></div>
       </section>
 
       <section class="signals-panel glass">
@@ -87,6 +100,52 @@
     </main>
   </div>
 
+  <!-- Watchlist Modal -->
+  <div id="watchlistModal" class="modal-overlay" hidden>
+    <div class="modal-box glass">
+      <div class="modal-head">
+        <h3>🔔 Email Watchlist</h3>
+        <button id="closeWatchlistModal" class="modal-close">✕</button>
+      </div>
+      <p class="modal-desc">Get an email alert when a company you're watching has a fresh signal update.</p>
+
+      <div class="modal-form">
+        <label class="modal-label" for="watchEmail">Your Email</label>
+        <input id="watchEmail" type="email" class="modal-input" placeholder="you@example.com" />
+
+        <label class="modal-label" for="watchCompany">Company</label>
+        <select id="watchCompany" class="modal-input modal-select">
+          <option value="">— Select a company —</option>
+        </select>
+
+        <button id="subscribeBtn" class="modal-btn-primary">Subscribe</button>
+        <button id="unsubscribeBtn" class="modal-btn-danger">Unsubscribe</button>
+      </div>
+
+      <p id="watchlistMsg" class="modal-message" hidden></p>
+    </div>
+  </div>
+
+  <!-- AI Outreach Modal -->
+  <div id="outreachModal" class="modal-overlay" hidden>
+    <div class="modal-box glass">
+      <div class="modal-head">
+        <h3>💼 AI Outreach Message</h3>
+        <button id="closeOutreachModal" class="modal-close">✕</button>
+      </div>
+      <div id="outreachContent" class="outreach-body">
+        <div class="outreach-loading">
+          <div class="spinner"></div>
+          <p>Generating personalized message…</p>
+        </div>
+      </div>
+      <div id="outreachActions" class="outreach-actions" hidden>
+        <button id="copyOutreachAI" class="modal-btn-primary">📋 Copy Message</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>

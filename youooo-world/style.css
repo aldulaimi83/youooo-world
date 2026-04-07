@@ -56,6 +56,8 @@ body {
   backdrop-filter: blur(12px);
 }
 
+/* ── Topbar ─────────────────────────────────────────────────────────────── */
+
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -63,6 +65,12 @@ body {
   padding: 18px 22px;
   border-radius: 22px;
   margin-bottom: 22px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .brand {
@@ -104,6 +112,27 @@ body {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ── Watchlist trigger button ───────────────────────────────────────────── */
+
+.watchlist-trigger-btn {
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(54, 211, 153, 0.12);
+  border: 1px solid rgba(54, 211, 153, 0.25);
+  color: #d2ffe8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.watchlist-trigger-btn:hover {
+  background: rgba(54, 211, 153, 0.2);
+  border-color: rgba(54, 211, 153, 0.45);
+}
+
+/* ── Main grid ──────────────────────────────────────────────────────────── */
 
 .main-grid {
   display: grid;
@@ -169,6 +198,45 @@ body {
   font-size: 28px;
   line-height: 1.1;
 }
+
+/* ── Map panel ──────────────────────────────────────────────────────────── */
+
+.map-panel {
+  grid-column: 1 / -1;
+  border-radius: 26px;
+  padding: 22px;
+}
+
+#talentMap {
+  width: 100%;
+  height: 340px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0d1525;
+}
+
+/* Leaflet dark-mode tweaks */
+.leaflet-container {
+  background: #0d1525 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #0e1422;
+  color: #edf2ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-tip {
+  background: #0e1422;
+}
+
+.leaflet-popup-close-button {
+  color: var(--muted) !important;
+}
+
+/* ── Signals & details panels ───────────────────────────────────────────── */
 
 .signals-panel,
 .details-panel {
@@ -303,6 +371,8 @@ body {
   line-height: 1.6;
   font-size: 14px;
 }
+
+/* ── Details panel ──────────────────────────────────────────────────────── */
 
 .details-empty {
   min-height: 430px;
@@ -454,6 +524,230 @@ body {
   line-height: 1.6;
 }
 
+/* ── AI Outreach button ─────────────────────────────────────────────────── */
+
+.ai-outreach-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  background: linear-gradient(135deg, rgba(118, 169, 255, 0.22), rgba(159, 122, 234, 0.22));
+  color: #dce7ff;
+  border: 1px solid rgba(118, 169, 255, 0.25);
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.ai-outreach-btn:hover {
+  background: linear-gradient(135deg, rgba(118, 169, 255, 0.35), rgba(159, 122, 234, 0.35));
+  border-color: rgba(118, 169, 255, 0.5);
+}
+
+/* ── Modals ─────────────────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal-overlay[hidden] {
+  display: none;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  padding: 28px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.modal-head h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.modal-desc {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.modal-form {
+  display: grid;
+  gap: 10px;
+}
+
+.modal-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+
+.modal-input:focus {
+  border-color: rgba(118, 169, 255, 0.45);
+}
+
+.modal-select {
+  cursor: pointer;
+  appearance: none;
+}
+
+.modal-btn-primary {
+  padding: 13px;
+  border-radius: 12px;
+  border: 0;
+  background: linear-gradient(135deg, rgba(118, 169, 255, 0.3), rgba(159, 122, 234, 0.3));
+  color: #dce7ff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s;
+}
+
+.modal-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.modal-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-btn-danger {
+  padding: 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 107, 107, 0.25);
+  background: rgba(255, 107, 107, 0.1);
+  color: #ffd4d4;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s;
+}
+
+.modal-btn-danger:hover {
+  opacity: 0.8;
+}
+
+.modal-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-message {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-message-ok {
+  background: rgba(54, 211, 153, 0.1);
+  color: #d2ffe8;
+  border: 1px solid rgba(54, 211, 153, 0.2);
+}
+
+.modal-message-error {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ffd4d4;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+/* ── AI Outreach modal body ─────────────────────────────────────────────── */
+
+.outreach-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(118, 169, 255, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.outreach-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(10, 14, 24, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #dce7ff;
+  margin: 0 0 16px;
+}
+
+.outreach-error {
+  color: #ffd4d4;
+  text-align: center;
+  padding: 24px 0;
+  font-size: 14px;
+}
+
+.outreach-actions {
+  margin-top: 4px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
 @media (max-width: 1080px) {
   .main-grid {
     grid-template-columns: 1fr;
@@ -496,9 +790,16 @@ body {
 
   .topbar,
   .hero,
+  .map-panel,
   .signals-panel,
   .details-panel {
     border-radius: 20px;
+  }
+
+  .topbar-right {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
   }
 
   .brand-copy strong {
@@ -519,5 +820,9 @@ body {
 
   .details-title h3 {
     font-size: 28px;
+  }
+
+  #talentMap {
+    height: 240px;
   }
 }
