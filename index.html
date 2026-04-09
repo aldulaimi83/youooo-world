@@ -7,132 +7,156 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+<!-- ══ BOOT SEQUENCE ══ -->
+<div id="boot" class="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">YOUOOO<span>INTEL</span></div>
+    <div class="boot-tagline">GLOBAL OPERATIONS CENTER — v5.0</div>
+    <div class="boot-sep"></div>
+    <div class="boot-lines" id="bootLines"></div>
+    <div class="boot-bar-wrap"><div class="boot-bar" id="bootBar"></div></div>
+  </div>
+  <div class="boot-corner tl"></div>
+  <div class="boot-corner tr"></div>
+  <div class="boot-corner bl"></div>
+  <div class="boot-corner br"></div>
+</div>
+
+<!-- ══ TOAST NOTIFICATIONS ══ -->
+<div class="toasts" id="toasts"></div>
+
+<!-- ══ KEYBOARD HINT ══ -->
+<div class="kbd-hint" id="kbdHint">
+  <span>1-6 layers</span><span>F fullscreen</span><span>R refresh</span><span>S sound</span><span>? hide</span>
+</div>
+
+<!-- ══ SOUND TOGGLE ══ -->
+<button class="sound-btn" id="soundBtn" title="Toggle sound (S)">🔇</button>
+
+<!-- ══ HUD ══ -->
 <div class="hud">
 
-  <!-- ══ HEADER ══ -->
-  <header class="hud-header">
+  <!-- HEADER -->
+  <header class="hud-hdr">
     <div class="brand">
-      <span class="brand-word">YOUOOO</span>
-      <span class="brand-sep">◈</span>
-      <span class="brand-sub">GLOBAL INTELLIGENCE</span>
+      <span class="brand-w">YOUOOO</span><span class="brand-sep">◈</span><span class="brand-s">GLOBAL INTELLIGENCE</span>
     </div>
 
     <div class="clocks" id="clocks">
-      <div class="clock-cell"><span class="tz-name">ZULU</span><span class="tz-time" id="tz-utc">--:--:--</span></div>
-      <div class="clock-cell"><span class="tz-name">NYC</span><span class="tz-time" id="tz-nyc">--:--:--</span></div>
-      <div class="clock-cell"><span class="tz-name">LONDON</span><span class="tz-time" id="tz-lon">--:--:--</span></div>
-      <div class="clock-cell"><span class="tz-name">DUBAI</span><span class="tz-time" id="tz-dxb">--:--:--</span></div>
-      <div class="clock-cell"><span class="tz-name">TOKYO</span><span class="tz-time" id="tz-tyo">--:--:--</span></div>
+      <div class="ck"><span class="ck-z">ZULU</span><span class="ck-t" id="tz-utc">--:--:--</span></div>
+      <div class="ck"><span class="ck-z">NYC</span><span class="ck-t" id="tz-nyc">--:--:--</span></div>
+      <div class="ck"><span class="ck-z">LDN</span><span class="ck-t" id="tz-lon">--:--:--</span></div>
+      <div class="ck"><span class="ck-z">DXB</span><span class="ck-t" id="tz-dxb">--:--:--</span></div>
+      <div class="ck"><span class="ck-z">TYO</span><span class="ck-t" id="tz-tyo">--:--:--</span></div>
     </div>
 
-    <div class="header-right">
-      <div class="sys-online"><span class="blink-dot"></span><span id="sysLabel">SYSTEMS ONLINE</span></div>
-      <div class="last-sync" id="lastSync">SYNC: —</div>
+    <div class="hdr-stats">
+      <div class="hstat"><span class="hstat-l">QUAKES</span><span class="hstat-v red" id="hQuakes">—</span></div>
+      <div class="hstat"><span class="hstat-l">AIRCRAFT</span><span class="hstat-v orange" id="hAircraft">—</span></div>
+      <div class="hstat"><span class="hstat-l">EVENTS</span><span class="hstat-v yellow" id="hEvents">—</span></div>
+      <div class="hstat"><span class="hstat-l">WIKI/MIN</span><span class="hstat-v cyan" id="hWiki">—</span></div>
+    </div>
+
+    <div class="hdr-right">
+      <div class="online-pill"><span class="blink-dot"></span><span>8 SYSTEMS ONLINE</span></div>
+      <div class="sync-lbl" id="syncLbl">SYNC: —</div>
     </div>
   </header>
 
-  <!-- ══ MAIN 3-COLUMN GRID ══ -->
+  <!-- MAIN 3-COL -->
   <div class="hud-main">
 
-    <!-- ── LEFT COLUMN ── -->
-    <aside class="col col-left">
+    <!-- ── LEFT ── -->
+    <aside class="col col-l">
 
-      <div class="panel" id="threatPanel">
-        <div class="panel-hd"><span class="panel-dot dot-red"></span>THREAT MATRIX</div>
-        <div class="panel-bd" id="threatMatrix">
-          <div class="scan-line">ANALYZING SIGNALS_</div>
-        </div>
+      <!-- Threat Matrix -->
+      <div class="panel">
+        <div class="ph"><span class="pd red"></span>THREAT MATRIX<span class="pbadge" id="threatBadge"></span></div>
+        <div class="pb" id="threatMatrix"><div class="scan">ANALYZING_</div></div>
+        <div class="radar-bg"><div class="radar-sweep"></div></div>
       </div>
 
-      <div class="panel" id="seismicPanel">
-        <div class="panel-hd">
-          <span class="panel-dot dot-orange"></span>SEISMIC ACTIVITY
-          <span class="panel-count" id="quakeCountBadge">—</span>
-        </div>
-        <div class="panel-bd" id="seismicList">
-          <div class="scan-line">SCANNING EARTH_</div>
-        </div>
+      <!-- Seismic -->
+      <div class="panel">
+        <div class="ph"><span class="pd orange"></span>SEISMIC ACTIVITY<span class="pbadge" id="seismicBadge">—</span></div>
+        <div class="pb" id="seismicList"><div class="scan">SCANNING EARTH_</div></div>
       </div>
 
-      <div class="panel panel-grow" id="eventsPanel">
-        <div class="panel-hd">
-          <span class="panel-dot dot-yellow"></span>ACTIVE EVENTS
-          <span class="panel-count" id="eventsCountBadge">—</span>
-        </div>
-        <div class="panel-bd panel-scroll" id="eventsList">
-          <div class="scan-line">LOADING NASA DATA_</div>
-        </div>
+      <!-- Wikipedia Live -->
+      <div class="panel panel-grow">
+        <div class="ph"><span class="pd cyan"></span>WIKI LIVE PULSE<span class="pbadge live-badge">LIVE</span></div>
+        <div class="pb panel-scroll" id="wikiList"><div class="scan">CONNECTING TO STREAM_</div></div>
       </div>
 
     </aside>
 
     <!-- ── CENTER MAP ── -->
-    <section class="col col-center">
+    <section class="col col-c">
       <div class="map-bar">
-        <div class="layer-btns">
-          <button class="lbtn active" data-layer="earthquakes">⬤ SEISMIC</button>
-          <button class="lbtn" data-layer="fires">⬤ FIRES</button>
-          <button class="lbtn" data-layer="volcanoes">⬤ VOLCANOES</button>
-          <button class="lbtn" data-layer="storms">⬤ STORMS</button>
-          <button class="lbtn" data-layer="iss">⬤ ISS LIVE</button>
+        <div class="lbtns">
+          <button class="lb active" data-layer="earthquakes">⬤ SEISMIC</button>
+          <button class="lb active" data-layer="aircraft">⬤ AIRCRAFT</button>
+          <button class="lb" data-layer="fires">⬤ FIRES</button>
+          <button class="lb" data-layer="volcanoes">⬤ VOLCANOES</button>
+          <button class="lb" data-layer="storms">⬤ STORMS</button>
+          <button class="lb" data-layer="iss">⬤ ISS</button>
         </div>
-        <div class="map-label-tag">LIVE OPERATIONAL MAP</div>
+        <div class="map-tag">LIVE OPERATIONAL MAP</div>
       </div>
       <div id="map"></div>
     </section>
 
-    <!-- ── RIGHT COLUMN ── -->
-    <aside class="col col-right">
+    <!-- ── RIGHT ── -->
+    <aside class="col col-r">
 
-      <div class="panel" id="assetsPanel">
-        <div class="panel-hd"><span class="panel-dot dot-green"></span>ASSET MONITOR</div>
-        <div class="panel-bd" id="assetList">
-          <div class="scan-line">CONNECTING MARKETS_</div>
-        </div>
+      <!-- Crypto -->
+      <div class="panel">
+        <div class="ph"><span class="pd green"></span>ASSET MONITOR<span class="pbadge" id="cryptoTime">—</span></div>
+        <div class="pb" id="assetList"><div class="scan">CONNECTING_</div></div>
       </div>
 
-      <div class="panel panel-grow" id="intelPanel">
-        <div class="panel-hd">
-          <span class="panel-dot dot-blue"></span>INTEL REPORTS
-          <div class="intel-tab-row">
-            <button class="itab active" data-feed="world">WORLD</button>
+      <!-- Air Traffic -->
+      <div class="panel">
+        <div class="ph"><span class="pd orange"></span>AIR TRAFFIC INTEL</div>
+        <div class="pb" id="airPanel"><div class="scan">ACQUIRING OPENSKY_</div></div>
+      </div>
+
+      <!-- Intel Reports -->
+      <div class="panel panel-grow">
+        <div class="ph">
+          <span class="pd blue"></span>INTEL REPORTS
+          <div class="itabs">
+            <button class="itab active" data-feed="hn">HN</button>
+            <button class="itab" data-feed="world">WORLD</button>
             <button class="itab" data-feed="tech">TECH</button>
-            <button class="itab" data-feed="business">BIZ</button>
             <button class="itab" data-feed="science">SCI</button>
           </div>
         </div>
-        <div class="panel-bd panel-scroll" id="intelList">
-          <div class="scan-line">DECRYPTING FEEDS_</div>
-        </div>
+        <div class="pb panel-scroll" id="intelList"><div class="scan">DECRYPTING_</div></div>
       </div>
 
-      <div class="panel" id="orbitalPanel">
-        <div class="panel-hd"><span class="panel-dot dot-purple"></span>ORBITAL INTEL — ISS</div>
-        <div class="panel-bd" id="orbitalInfo">
-          <div class="scan-line">ACQUIRING SIGNAL_</div>
-        </div>
+      <!-- ISS -->
+      <div class="panel">
+        <div class="ph"><span class="pd purple"></span>ORBITAL INTEL — ISS</div>
+        <div class="pb" id="orbitalInfo"><div class="scan">ACQUIRING SIGNAL_</div></div>
       </div>
 
     </aside>
+  </div>
 
-  </div><!-- .hud-main -->
-
-  <!-- ══ FOOTER STATUS BAR ══ -->
-  <footer class="hud-footer">
-    <div class="foot-seg" id="swBar">☀ SPACE WEATHER: LOADING</div>
-    <div class="foot-div">◈</div>
-    <div class="foot-seg" id="issBar">🛸 ISS: LOCATING</div>
-    <div class="foot-div">◈</div>
-    <div class="foot-ticker" id="footTicker">
-      <span id="tickerInner">INITIALIZING GLOBAL INTELLIGENCE SYSTEMS...</span>
-    </div>
+  <!-- FOOTER -->
+  <footer class="hud-ftr">
+    <div class="fs" id="swFoot">☀ SPACE WEATHER: LOADING</div>
+    <div class="fd">◈</div>
+    <div class="fs" id="issFoot">🛸 ISS: LOCATING</div>
+    <div class="fd">◈</div>
+    <div class="ftick"><span id="tickSpan">INITIALIZING...</span></div>
   </footer>
 
 </div><!-- .hud -->
