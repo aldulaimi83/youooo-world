@@ -1,663 +1,665 @@
-// ============================================================
-// YOUOOO World Intelligence — script.js
-// All data sources are 100% free, no API keys required
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// YOUOOO INTEL — Global Operations Center
+// 100% free data sources, zero API keys required
+// ═══════════════════════════════════════════════════════════
 
-// --- Free data endpoints ---
-const USGS_URL        = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
-const EONET_URL       = 'https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=100';
-const ISS_URL         = 'https://api.wheretheiss.at/v1/satellites/25544';
-const KP_URL          = 'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json';
-const SOLAR_WIND_URL  = 'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json';
-const COINGECKO_URL   = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,ripple,cardano,dogecoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true';
-const RSS2JSON        = 'https://api.rss2json.com/v1/api.json?rss_url=';
-const YAHOO_PROXY     = 'https://api.allorigins.win/raw?url=';
+// ── Free data sources ──
+const USGS    = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+const EONET   = 'https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=100';
+const ISS     = 'https://api.wheretheiss.at/v1/satellites/25544';
+const KP_IDX  = 'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json';
+const SOL_WND = 'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json';
+const GECKO   = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,ripple,cardano,dogecoin,binancecoin&vs_currencies=usd&include_24hr_change=true';
+const R2J     = 'https://api.rss2json.com/v1/api.json?rss_url=';
+const PROXY   = 'https://api.allorigins.win/raw?url=';
 
-const RSS_FEEDS = {
+const RSS = {
   world:    'https://feeds.bbci.co.uk/news/world/rss.xml',
   tech:     'https://feeds.bbci.co.uk/news/technology/rss.xml',
   business: 'https://feeds.bbci.co.uk/news/business/rss.xml',
   science:  'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml'
 };
 
-const STOCK_WATCHLIST = ['SPY', 'QQQ', 'NVDA', 'TSLA', 'AAPL', 'MSFT'];
-
-const CRYPTO_META = [
-  { id: 'bitcoin',   symbol: 'BTC',  icon: '₿',  name: 'Bitcoin'   },
-  { id: 'ethereum',  symbol: 'ETH',  icon: 'Ξ',  name: 'Ethereum'  },
-  { id: 'solana',    symbol: 'SOL',  icon: '◎',  name: 'Solana'    },
-  { id: 'ripple',    symbol: 'XRP',  icon: '✕',  name: 'XRP'       },
-  { id: 'cardano',   symbol: 'ADA',  icon: '₳',  name: 'Cardano'   },
-  { id: 'dogecoin',  symbol: 'DOGE', icon: 'Ð',  name: 'Dogecoin'  }
+const CRYPTOS = [
+  { id: 'bitcoin',      sym: 'BTC',  name: 'Bitcoin'  },
+  { id: 'ethereum',     sym: 'ETH',  name: 'Ethereum' },
+  { id: 'binancecoin',  sym: 'BNB',  name: 'BNB'      },
+  { id: 'solana',       sym: 'SOL',  name: 'Solana'   },
+  { id: 'ripple',       sym: 'XRP',  name: 'XRP'      },
+  { id: 'cardano',      sym: 'ADA',  name: 'Cardano'  },
+  { id: 'dogecoin',     sym: 'DOGE', name: 'Dogecoin' }
 ];
 
-// --- App state ---
-const state = {
-  earthquakes: [],
-  eonetEvents: [],
-  crypto: {},
-  stocks: [],
-  news: {},
-  iss: null
+// ── App state ──
+const S = {
+  quakes:    [],
+  events:    [],
+  crypto:    {},
+  iss:       null,
+  kp:        null,
+  solarWind: null,
+  news:      {}
 };
 
-// --- Map globals ---
+// ── Map ──
 let map;
-const layers = {};
-let activeLayer = 'earthquakes';
-let currentNewsFeed = 'world';
+const lyr = {};
+let activeLayers = new Set(['earthquakes']);
+let newsTab = 'world';
 
-// ============================================================
-// Boot
-// ============================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  setupTabs();
+// ═══════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  startClocks();
   setupLayerButtons();
-  setupNewsFilter();
+  setupNewsTabButtons();
   initMap();
-  await loadAllData();
-  setInterval(loadAllData, 5 * 60 * 1000);   // full refresh every 5 min
-  setInterval(refreshISS, 10 * 1000);         // ISS moves fast — refresh every 10 s
+  loadAll();
+  setInterval(loadAll, 5 * 60 * 1000);
+  setInterval(tickISS, 10 * 1000);
 });
 
-// ============================================================
-// Map
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// CLOCKS — update every second, 5 timezones
+// ═══════════════════════════════════════════════════════════
+function startClocks() {
+  function tick() {
+    const now = new Date();
+    const fmt = (tz) => now.toLocaleTimeString('en-GB', { timeZone: tz, hour12: false });
+    document.getElementById('tz-utc').textContent = fmt('UTC');
+    document.getElementById('tz-nyc').textContent = fmt('America/New_York');
+    document.getElementById('tz-lon').textContent = fmt('Europe/London');
+    document.getElementById('tz-dxb').textContent = fmt('Asia/Dubai');
+    document.getElementById('tz-tyo').textContent = fmt('Asia/Tokyo');
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════════
 function initMap() {
-  map = L.map('map', { zoomControl: true, worldCopyJump: true }).setView([22, 10], 2.2);
+  map = L.map('map', {
+    zoomControl: false,
+    worldCopyJump: true,
+    attributionControl: false
+  }).setView([22, 12], 2.3);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19
+    subdomains: 'abcd', maxZoom: 19
   }).addTo(map);
 
-  layers.earthquakes = L.layerGroup().addTo(map);
-  layers.fires       = L.layerGroup();
-  layers.volcanoes   = L.layerGroup();
-  layers.storms      = L.layerGroup();
-  layers.iss         = L.layerGroup();
-  layers.markets     = L.layerGroup();
+  L.control.attribution({ position: 'bottomright', prefix: '© OpenStreetMap © CARTO' }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  ['earthquakes', 'fires', 'volcanoes', 'storms', 'iss'].forEach(k => {
+    lyr[k] = L.layerGroup();
+  });
+  lyr.earthquakes.addTo(map);
 }
 
-function switchLayer(name) {
-  Object.values(layers).forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
-  if (layers[name]) map.addLayer(layers[name]);
+function syncLayers() {
+  ['earthquakes', 'fires', 'volcanoes', 'storms', 'iss'].forEach(k => {
+    if (activeLayers.has(k)) { if (!map.hasLayer(lyr[k])) map.addLayer(lyr[k]); }
+    else                     { if (map.hasLayer(lyr[k]))  map.removeLayer(lyr[k]); }
+  });
 }
 
-// ============================================================
-// Master loader
-// ============================================================
-async function loadAllData() {
-  setUpdatedTime();
+// ═══════════════════════════════════════════════════════════
+// MASTER LOAD
+// ═══════════════════════════════════════════════════════════
+async function loadAll() {
+  setSync();
   await Promise.allSettled([
-    loadEarthquakes(),
-    loadNASAEvents(),
+    loadQuakes(),
+    loadEONET(),
     loadCrypto(),
-    loadStocks(),
-    loadSpaceWeather(),
     loadISS(),
+    loadSpaceWeather(),
     loadNews('world'),
     loadNews('tech'),
     loadNews('business'),
     loadNews('science')
   ]);
-  buildLiveAlerts();
-  updateTicker();
+  buildThreatMatrix();
+  buildTicker();
 }
 
-// ============================================================
-// Earthquakes — USGS (free, CORS-enabled)
-// ============================================================
-async function loadEarthquakes() {
+function setSync() {
+  document.getElementById('lastSync').textContent =
+    'SYNC: ' + new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+// ═══════════════════════════════════════════════════════════
+// EARTHQUAKES — USGS (free, CORS OK)
+// ═══════════════════════════════════════════════════════════
+async function loadQuakes() {
   try {
-    const res  = await fetch(USGS_URL);
-    const data = await res.json();
-    state.earthquakes = data.features || [];
+    const data = await fetchJSON(USGS);
+    S.quakes = (data.features || []).filter(f => f.properties.mag > 0);
 
-    layers.earthquakes.clearLayers();
-    const shown = state.earthquakes.slice(0, 80);
-    document.getElementById('quakeCount').textContent = shown.length;
+    lyr.earthquakes.clearLayers();
 
-    shown.forEach(f => {
+    // Inject pulse keyframe once
+    injectCSS('eq-pulse', `
+      @keyframes eq-pulse {
+        0%  { transform:scale(1);   opacity:0.85; }
+        70% { transform:scale(2.8); opacity:0; }
+        100%{ transform:scale(1);   opacity:0; }
+      }
+    `);
+
+    S.quakes.slice(0, 100).forEach(f => {
       const [lng, lat, depth] = f.geometry.coordinates;
       const mag   = f.properties.mag ?? 0;
-      const place = f.properties.place || 'Unknown location';
-      const time  = new Date(f.properties.time).toLocaleString();
-      const color = mag >= 6 ? '#ff2d2d'
-                  : mag >= 5 ? '#ff6b2d'
-                  : mag >= 4 ? '#ffd700'
-                  : mag >= 2 ? '#57ffd6'
-                  :            '#447799';
+      const place = f.properties.place || 'Unknown';
+      const time  = ago(f.properties.time);
 
-      L.circleMarker([lat, lng], {
-        radius:      Math.max(3, mag * 2.8),
-        color,
-        weight:      1.5,
-        opacity:     0.95,
-        fillColor:   color,
-        fillOpacity: mag >= 5 ? 0.75 : 0.4
-      }).bindPopup(popup(`🔴 EARTHQUAKE`,
-        `<b>${place}</b>`,
-        `Magnitude: <b style="color:${color}">${mag}</b>`,
-        `Depth: ${depth} km`,
-        time
-      )).addTo(layers.earthquakes);
+      const col  = magColor(mag);
+      const r    = Math.max(4, Math.min(22, mag * 3.2));
+
+      const icon = L.divIcon({
+        className: '',
+        iconSize: [r * 3, r * 3],
+        iconAnchor: [r * 1.5, r * 1.5],
+        html: `
+          <div style="position:relative;width:${r*3}px;height:${r*3}px;display:flex;align-items:center;justify-content:center;">
+            <div style="
+              position:absolute;width:${r*3}px;height:${r*3}px;
+              border-radius:50%;border:1.5px solid ${col};
+              animation:eq-pulse ${2.5 - Math.min(1, mag/10)}s ease-out infinite;
+              opacity:0.6;
+            "></div>
+            <div style="
+              width:${r}px;height:${r}px;border-radius:50%;
+              background:${col};opacity:0.85;
+              box-shadow:0 0 ${r*1.5}px ${col}88;
+            "></div>
+          </div>`
+      });
+
+      L.marker([lat, lng], { icon })
+        .bindPopup(mp(
+          '◉ SEISMIC EVENT',
+          `<b>${place}</b>`,
+          `Magnitude: <b style="color:${col}">${mag}</b>`,
+          `Depth: ${depth} km`,
+          `${time}`
+        )).addTo(lyr.earthquakes);
     });
-  } catch (err) {
-    console.error('Earthquakes failed:', err);
-  }
+
+    // Seismic list
+    const top = [...S.quakes].sort((a, b) => b.properties.mag - a.properties.mag).slice(0, 7);
+    document.getElementById('quakeCountBadge').textContent = S.quakes.length;
+    document.getElementById('seismicList').innerHTML = top.map(f => {
+      const mag   = f.properties.mag;
+      const place = f.properties.place || 'Unknown';
+      const time  = ago(f.properties.time);
+      const cls   = mag >= 6 ? 'q-mag-crit' : mag >= 5 ? 'q-mag-high' : mag >= 4 ? 'q-mag-mod' : 'q-mag-low';
+      return `
+        <div class="quake-item">
+          <div class="q-mag ${cls}">M${mag}</div>
+          <div class="q-info">
+            <div class="q-place">${esc(shortPlace(place))}</div>
+            <div class="q-time">${time}</div>
+          </div>
+        </div>`;
+    }).join('') || none('No recent seismic data');
+
+  } catch (e) { console.error('Quakes:', e); }
 }
 
-// ============================================================
-// Natural disasters — NASA EONET (free, CORS-enabled)
-// ============================================================
-async function loadNASAEvents() {
+// ═══════════════════════════════════════════════════════════
+// NASA EONET — natural events (free, CORS OK)
+// ═══════════════════════════════════════════════════════════
+async function loadEONET() {
   try {
-    const res  = await fetch(EONET_URL);
-    const data = await res.json();
-    state.eonetEvents = data.events || [];
+    const data = await fetchJSON(EONET);
+    S.events = data.events || [];
 
-    layers.fires.clearLayers();
-    layers.volcanoes.clearLayers();
-    layers.storms.clearLayers();
+    lyr.fires.clearLayers();
+    lyr.volcanoes.clearLayers();
+    lyr.storms.clearLayers();
 
-    let fireCount = 0;
-    document.getElementById('eventCount').textContent = state.eonetEvents.length;
+    let fires = 0;
 
-    state.eonetEvents.forEach(event => {
-      const cat  = (event.categories?.[0]?.title || '').toLowerCase();
-      const geom = event.geometries?.[0];
+    S.events.forEach(ev => {
+      const cat  = (ev.categories?.[0]?.title || '').toLowerCase();
+      const geom = ev.geometries?.[0];
       if (!geom || geom.type !== 'Point') return;
 
       const [lng, lat] = geom.coordinates;
-      const date = geom.date ? new Date(geom.date).toLocaleDateString() : 'Active';
-      const title = event.title;
+      const date = geom.date ? ago(new Date(geom.date).getTime()) : 'Active';
 
       if (cat.includes('wildfire') || cat.includes('fire')) {
-        fireCount++;
-        L.circleMarker([lat, lng], {
-          radius: 7, color: '#ff4500', fillColor: '#ff6600',
-          fillOpacity: 0.75, weight: 1.5
-        }).bindPopup(popup('🔥 WILDFIRE', `<b>${title}</b>`, `Date: ${date}`))
-          .addTo(layers.fires);
+        fires++;
+        const icon = divMkr('🔥', 22, 'filter:drop-shadow(0 0 6px #ff7700)');
+        L.marker([lat, lng], { icon })
+          .bindPopup(mp('🔥 WILDFIRE', `<b>${ev.title}</b>`, date))
+          .addTo(lyr.fires);
 
       } else if (cat.includes('volcano')) {
-        L.circleMarker([lat, lng], {
-          radius: 9, color: '#8B4513', fillColor: '#CD853F',
-          fillOpacity: 0.85, weight: 2
-        }).bindPopup(popup('🌋 VOLCANO', `<b>${title}</b>`, `Date: ${date}`))
-          .addTo(layers.volcanoes);
+        const icon = divMkr('🌋', 22, 'filter:drop-shadow(0 0 6px #ff4422)');
+        L.marker([lat, lng], { icon })
+          .bindPopup(mp('🌋 VOLCANIC ACTIVITY', `<b>${ev.title}</b>`, date))
+          .addTo(lyr.volcanoes);
 
       } else if (cat.includes('storm') || cat.includes('cyclone') ||
                  cat.includes('hurricane') || cat.includes('typhoon')) {
-        L.circleMarker([lat, lng], {
-          radius: 11, color: '#7b68ee', fillColor: '#9370db',
-          fillOpacity: 0.6, weight: 2
-        }).bindPopup(popup('🌀 TROPICAL STORM', `<b>${title}</b>`, `Date: ${date}`))
-          .addTo(layers.storms);
+        const icon = divMkr('🌀', 26, 'filter:drop-shadow(0 0 8px #aa55ff); animation:spin 8s linear infinite');
+        injectCSS('spin-kf', '@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}');
+        L.marker([lat, lng], { icon })
+          .bindPopup(mp('🌀 TROPICAL SYSTEM', `<b>${ev.title}</b>`, date))
+          .addTo(lyr.storms);
       }
     });
 
-    document.getElementById('fireCount').textContent = fireCount;
-    renderDisastersFeed(state.eonetEvents);
-  } catch (err) {
-    console.error('NASA EONET failed:', err);
-  }
+    document.getElementById('eventsCountBadge').textContent = S.events.length;
+    document.getElementById('eventsList').innerHTML = S.events.slice(0, 20).map(ev => {
+      const cat  = ev.categories?.[0]?.title || 'Event';
+      const date = ev.geometries?.[0]?.date ? ago(new Date(ev.geometries[0].date).getTime()) : 'Active';
+      return `
+        <div class="ev-item">
+          <div class="ev-icon">${catIcon(cat)}</div>
+          <div class="ev-body">
+            <div class="ev-title">${esc(ev.title)}</div>
+            <div class="ev-meta">${esc(cat)} · ${date}</div>
+          </div>
+        </div>`;
+    }).join('') || none('No active events from NASA');
+
+  } catch (e) { console.error('EONET:', e); }
 }
 
-// ============================================================
-// Crypto — CoinGecko (free, no key, CORS-enabled)
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// CRYPTO — CoinGecko (free, no key, CORS OK)
+// ═══════════════════════════════════════════════════════════
 async function loadCrypto() {
   try {
-    const res  = await fetch(COINGECKO_URL);
-    const data = await res.json();
-    state.crypto = data;
-    renderCrypto(data);
-  } catch (err) {
-    console.error('CoinGecko failed:', err);
-    document.getElementById('cryptoGrid').innerHTML =
-      '<div class="empty-state">Crypto data temporarily unavailable</div>';
-  }
-}
-
-function renderCrypto(data) {
-  const container = document.getElementById('cryptoGrid');
-  container.innerHTML = CRYPTO_META.map(({ id, symbol, icon, name }) => {
-    const coin = data[id];
-    if (!coin) return '';
-    const price  = coin.usd;
-    const change = coin.usd_24h_change ?? 0;
-    const cls    = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
-    const sign   = change > 0 ? '+' : '';
-    return `
-      <div class="quote-card">
-        <div class="crypto-icon">${icon}</div>
-        <div class="symbol">${symbol}</div>
-        <div class="price">$${fmtCrypto(price)}</div>
-        <div class="change ${cls}">${sign}${change.toFixed(2)}%</div>
-        <div class="item-meta">${name}</div>
-      </div>`;
-  }).join('');
-}
-
-// ============================================================
-// Stocks — Yahoo Finance via allorigins proxy (free)
-// ============================================================
-async function loadStocks() {
-  const container = document.getElementById('watchlistGrid');
-  container.innerHTML = '<div class="empty-state">Loading stocks...</div>';
-  try {
-    const results = await Promise.allSettled(STOCK_WATCHLIST.map(fetchYahooQuote));
-    state.stocks = results
-      .filter(r => r.status === 'fulfilled' && r.value)
-      .map(r => r.value);
-
-    if (!state.stocks.length) {
-      container.innerHTML = '<div class="empty-state">Stock data unavailable — CORS proxy may be rate-limited</div>';
-      return;
-    }
-    container.innerHTML = state.stocks.map(q => {
-      const chg = parseFloat(q.change);
-      const cls  = chg > 0 ? 'positive' : chg < 0 ? 'negative' : 'neutral';
-      const sign = chg > 0 ? '+' : '';
+    S.crypto = await fetchJSON(GECKO);
+    document.getElementById('assetList').innerHTML = CRYPTOS.map(({ id, sym, name }) => {
+      const c   = S.crypto[id];
+      if (!c) return '';
+      const px  = c.usd;
+      const chg = c.usd_24h_change ?? 0;
+      const cls = chg > 0.5 ? 'up' : chg < -0.5 ? 'down' : 'flat';
+      const arr = chg > 0.5 ? '▲' : chg < -0.5 ? '▼' : '─';
       return `
-        <div class="quote-card">
-          <div class="symbol">${q.symbol}</div>
-          <div class="price">$${q.price}</div>
-          <div class="change ${cls}">${sign}${q.change}%</div>
+        <div class="asset-row" title="${name}">
+          <div class="asset-sym">${sym}</div>
+          <div class="asset-price">$${fmtPrice(px)}</div>
+          <div class="asset-chg ${cls}">${arr} ${Math.abs(chg).toFixed(2)}%</div>
         </div>`;
     }).join('');
-    renderMarketMarkers(state.stocks);
-  } catch (err) {
-    console.error('Stocks failed:', err);
-    container.innerHTML = '<div class="empty-state">Stock data unavailable</div>';
+  } catch (e) {
+    console.error('Crypto:', e);
+    document.getElementById('assetList').innerHTML = none('Market data unavailable');
   }
 }
 
-async function fetchYahooQuote(symbol) {
-  const yahooUrl  = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-  const proxyUrl  = `${YAHOO_PROXY}${encodeURIComponent(yahooUrl)}`;
-  const res       = await fetch(proxyUrl);
-  const data      = JSON.parse(await res.text());
-  const result    = data?.chart?.result?.[0];
-  if (!result) return null;
-  const meta      = result.meta;
-  const price     = meta.regularMarketPrice;
-  const prev      = meta.previousClose || meta.chartPreviousClose;
-  const change    = prev ? ((price - prev) / prev * 100) : 0;
-  return { symbol, price: price.toFixed(2), change: change.toFixed(2) };
-}
-
-// ============================================================
-// ISS — wheretheiss.at (free, CORS-enabled)
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// ISS — wheretheiss.at (free, CORS OK), refresh every 10 s
+// ═══════════════════════════════════════════════════════════
 async function loadISS() {
   try {
-    const res  = await fetch(ISS_URL);
-    const data = await res.json();
-    state.iss = data;
-    renderISSPanel(data);
-    renderISSMap(data);
-  } catch (err) {
-    console.error('ISS fetch failed:', err);
-  }
+    S.iss = await fetchJSON(ISS);
+    renderISS(S.iss);
+    renderISSMap(S.iss);
+  } catch (e) { console.error('ISS:', e); }
 }
 
-async function refreshISS() {
-  if (activeLayer === 'iss') await loadISS();
+async function tickISS() {
+  if (!activeLayers.has('iss') && !document.getElementById('orbitalPanel').offsetParent) return;
+  await loadISS();
 }
 
-function renderISSPanel(d) {
-  const lat = parseFloat(d.latitude).toFixed(4);
-  const lng = parseFloat(d.longitude).toFixed(4);
-  const alt = parseFloat(d.altitude).toFixed(1);
-  const vel = parseInt(d.velocity).toLocaleString();
-  document.getElementById('issAlt').textContent = `${alt}km`;
-  document.getElementById('issInfo').innerHTML = `
-    <div class="iss-grid">
-      <div class="iss-stat"><span class="iss-label">LATITUDE</span><span class="iss-val">${lat}°</span></div>
-      <div class="iss-stat"><span class="iss-label">LONGITUDE</span><span class="iss-val">${lng}°</span></div>
-      <div class="iss-stat"><span class="iss-label">ALTITUDE</span><span class="iss-val">${alt} km</span></div>
-      <div class="iss-stat"><span class="iss-label">VELOCITY</span><span class="iss-val">${vel} km/h</span></div>
+function renderISS(d) {
+  const lat  = parseFloat(d.latitude);
+  const lng  = parseFloat(d.longitude);
+  const alt  = parseFloat(d.altitude).toFixed(1);
+  const vel  = parseInt(d.velocity).toLocaleString();
+  const latS = lat >= 0 ? `${lat.toFixed(3)}°N` : `${Math.abs(lat).toFixed(3)}°S`;
+  const lngS = lng >= 0 ? `${lng.toFixed(3)}°E` : `${Math.abs(lng).toFixed(3)}°W`;
+
+  document.getElementById('orbitalInfo').innerHTML = `
+    <div class="orbital-grid">
+      <div class="o-cell"><span class="o-label">LATITUDE</span><span class="o-val">${latS}</span></div>
+      <div class="o-cell"><span class="o-label">LONGITUDE</span><span class="o-val">${lngS}</span></div>
+      <div class="o-cell"><span class="o-label">ALTITUDE</span><span class="o-val">${alt} km</span></div>
+      <div class="o-cell"><span class="o-label">VELOCITY</span><span class="o-val">${vel}<small style="font-size:.6rem"> km/h</small></span></div>
     </div>
-    <div class="iss-note">🌍 Orbiting Earth every ~90 minutes at 27,600 km/h</div>`;
+    <div class="o-over">ISS OVERHEAD: <span>${regionFromCoords(lat, lng)}</span></div>`;
+
+  // Footer
+  document.getElementById('issBar').innerHTML =
+    `🛸 <strong>ISS</strong> ${latS} ${lngS} — ${alt} km alt — ${vel} km/h`;
 }
 
 function renderISSMap(d) {
+  lyr.iss.clearLayers();
   const lat = parseFloat(d.latitude);
   const lng = parseFloat(d.longitude);
-  layers.iss.clearLayers();
   const icon = L.divIcon({
-    html: '<div class="iss-dot">🛸</div>',
-    iconSize: [32, 32], iconAnchor: [16, 16], className: ''
+    html: '<div class="iss-marker">🛸</div>',
+    iconSize: [28, 28], iconAnchor: [14, 14], className: ''
   });
   L.marker([lat, lng], { icon })
-    .bindPopup(popup('🛸 INTERNATIONAL SPACE STATION',
-      `Lat: ${lat.toFixed(4)}° | Lng: ${lng.toFixed(4)}°`,
-      `Altitude: ${parseFloat(d.altitude).toFixed(1)} km`,
-      `Velocity: ${parseInt(d.velocity).toLocaleString()} km/h`,
-      `Updated: ${new Date().toLocaleTimeString()}`
-    )).addTo(layers.iss);
+    .bindPopup(mp(
+      '🛸 ISS — LIVE',
+      `Lat ${lat.toFixed(3)}° | Lng ${lng.toFixed(3)}°`,
+      `Altitude: <b>${parseFloat(d.altitude).toFixed(1)} km</b>`,
+      `Velocity: <b>${parseInt(d.velocity).toLocaleString()} km/h</b>`,
+      `Over: ${regionFromCoords(lat, lng)}`
+    )).addTo(lyr.iss);
 }
 
-// ============================================================
-// Space weather — NOAA SWPC (free, CORS-enabled)
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// SPACE WEATHER — NOAA SWPC (free, CORS OK)
+// ═══════════════════════════════════════════════════════════
 async function loadSpaceWeather() {
   try {
-    const [kpRes, swRes] = await Promise.allSettled([
-      fetch(KP_URL),
-      fetch(SOLAR_WIND_URL)
+    const [kpData, swData] = await Promise.allSettled([
+      fetchJSON(KP_IDX),
+      fetchJSON(SOL_WND)
     ]);
 
-    let kp = null;
-    if (kpRes.status === 'fulfilled') {
-      const kpData = await kpRes.value.json();
-      kp = kpData[kpData.length - 1]?.kp_index ?? null;
+    if (kpData.status === 'fulfilled') {
+      const last = kpData.value[kpData.value.length - 1];
+      S.kp = parseFloat(last?.kp_index) || 0;
     }
 
-    let solarWind = null;
-    if (swRes.status === 'fulfilled') {
-      const swData = await swRes.value.json();
-      const row    = swData[swData.length - 1];
-      if (row && row.length >= 3) {
-        solarWind = { density: parseFloat(row[1]), speed: parseFloat(row[2]) };
+    if (swData.status === 'fulfilled') {
+      const row = swData.value[swData.value.length - 1];
+      if (row?.length >= 3) {
+        S.solarWind = { density: parseFloat(row[1]), speed: parseFloat(row[2]) };
       }
     }
 
-    renderSpaceWeather(kp, solarWind);
-  } catch (err) {
-    console.error('Space weather failed:', err);
-    document.getElementById('spaceWeather').innerHTML =
-      '<div class="empty-state">Space weather data unavailable</div>';
-  }
+    const kp   = S.kp ?? 0;
+    const sw   = S.solarWind;
+    const sev  = kp >= 7 ? '⚠ SEVERE STORM'
+               : kp >= 5 ? '⚡ GEOMAGNETIC STORM'
+               : kp >= 3 ? '🌠 ACTIVE'
+               : '✓ QUIET';
+
+    document.getElementById('swBar').innerHTML =
+      `☀ SPACE WEATHER — Kp: <strong>${kp.toFixed(1)}</strong> ${sev}` +
+      (sw ? ` · Wind: <strong>${Math.round(sw.speed)} km/s</strong> · Density: <strong>${sw.density.toFixed(1)} p/cm³</strong>` : '');
+
+  } catch (e) { console.error('Space weather:', e); }
 }
 
-function renderSpaceWeather(kp, sw) {
-  const kpNum = parseFloat(kp) || 0;
-  const severity = kpNum >= 7 ? { cls: 'danger',  label: '⚠️ SEVERE STORM',    desc: 'Extreme geomagnetic conditions. Radio blackouts possible.' }
-                 : kpNum >= 5 ? { cls: 'warning', label: '⚡ GEOMAGNETIC STORM', desc: 'Aurora visible at lower latitudes. GPS disruption possible.' }
-                 : kpNum >= 3 ? { cls: 'moderate',label: '🌠 ACTIVE',            desc: 'Aurora possible at high latitudes.' }
-                 :              { cls: 'calm',     label: '✅ QUIET',             desc: 'Calm space weather conditions.' };
-
-  document.getElementById('spaceWeather').innerHTML = `
-    <div class="sw-grid">
-      <div class="sw-card ${severity.cls}">
-        <div class="sw-label">Kp INDEX</div>
-        <div class="sw-big">${kpNum.toFixed(1)}</div>
-        <div class="sw-tag">${severity.label}</div>
-      </div>
-      ${sw ? `
-      <div class="sw-card">
-        <div class="sw-label">SOLAR WIND</div>
-        <div class="sw-big">${Math.round(sw.speed)}</div>
-        <div class="sw-tag">km/s</div>
-      </div>
-      <div class="sw-card">
-        <div class="sw-label">DENSITY</div>
-        <div class="sw-big">${sw.density.toFixed(1)}</div>
-        <div class="sw-tag">p/cm³</div>
-      </div>` : ''}
-    </div>
-    <div class="sw-note">${severity.desc}</div>`;
-}
-
-// ============================================================
-// News — BBC RSS via rss2json (free, no key)
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// NEWS — BBC RSS via rss2json (free, no key)
+// ═══════════════════════════════════════════════════════════
 async function loadNews(feed) {
   try {
-    const url  = `${RSS2JSON}${encodeURIComponent(RSS_FEEDS[feed])}`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (data.status !== 'ok') throw new Error('RSS parse failed');
-    state.news[feed] = data.items || [];
-    if (feed === currentNewsFeed) renderNews(state.news[feed]);
-  } catch (err) {
-    console.error(`News (${feed}) failed:`, err);
-    if (feed === currentNewsFeed) {
-      document.getElementById('newsFeed').innerHTML =
-        '<div class="empty-state">News temporarily unavailable</div>';
-    }
+    const url  = `${R2J}${encodeURIComponent(RSS[feed])}`;
+    const data = await fetchJSON(url);
+    if (data.status !== 'ok') throw new Error('RSS failed');
+    S.news[feed] = data.items || [];
+    if (feed === newsTab) renderNews();
+  } catch (e) {
+    console.error(`News(${feed}):`, e);
+    if (feed === newsTab) document.getElementById('intelList').innerHTML = none('Feed temporarily unavailable');
   }
 }
 
-function renderNews(items) {
-  const container = document.getElementById('newsFeed');
-  if (!items || !items.length) {
-    container.innerHTML = '<div class="empty-state">No news available</div>';
+function renderNews() {
+  const items = S.news[newsTab] || [];
+  if (!items.length) {
+    document.getElementById('intelList').innerHTML = none('Loading…');
     return;
   }
-  container.innerHTML = items.slice(0, 10).map(item => {
-    const title = escapeHtml(item.title || 'Untitled');
-    const date  = item.pubDate ? new Date(item.pubDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
-    const desc  = escapeHtml((item.description || '').replace(/<[^>]*>/g, '').slice(0, 160));
+  document.getElementById('intelList').innerHTML = items.slice(0, 12).map(item => {
+    const title = esc(item.title || 'Untitled');
+    const desc  = esc((item.description || '').replace(/<[^>]*>/g, '').slice(0, 120));
     const url   = item.link || '#';
+    const date  = item.pubDate
+      ? new Date(item.pubDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
     return `
-      <div class="news-item">
-        <div class="news-title"><a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
-        <div class="news-source">BBC News • ${date}</div>
-        <div class="item-meta">${desc}</div>
-      </div>`;
-  }).join('');
-}
-
-// ============================================================
-// Disasters feed (side panel)
-// ============================================================
-function renderDisastersFeed(events) {
-  const container = document.getElementById('disastersFeed');
-  if (!events.length) {
-    container.innerHTML = '<div class="empty-state">No active events</div>';
-    return;
-  }
-  container.innerHTML = events.slice(0, 20).map(event => {
-    const cat  = event.categories?.[0]?.title || 'Natural Event';
-    const icon = catIcon(cat);
-    const date = event.geometries?.[0]?.date
-      ? new Date(event.geometries[0].date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
-      : 'Active';
-    return `
-      <div class="event-item">
-        <div class="event-icon">${icon}</div>
-        <div class="event-body">
-          <div class="event-title">${escapeHtml(event.title)}</div>
-          <div class="event-meta">${escapeHtml(cat)} • ${date}</div>
+      <div class="intel-item">
+        <div class="intel-meta">
+          <span class="intel-source">BBC ${newsTab.toUpperCase()}</span>
+          <span class="intel-time">${date}</span>
         </div>
+        <div class="intel-title"><a href="${url}" target="_blank" rel="noopener">${title}</a></div>
+        ${desc ? `<div class="intel-desc">${desc}…</div>` : ''}
       </div>`;
   }).join('');
 }
 
-// ============================================================
-// Market markers on map
-// ============================================================
-function renderMarketMarkers(quotes) {
-  layers.markets.clearLayers();
-  const positions = {
-    SPY:  [40.7128, -74.0060],
-    QQQ:  [37.7749, -122.4194],
-    NVDA: [37.3875, -122.0575],
-    TSLA: [30.2672, -97.7431],
-    AAPL: [37.3361, -122.0090],
-    MSFT: [47.6062, -122.3321]
-  };
-  quotes.forEach(q => {
-    const pos  = positions[q.symbol];
-    if (!pos) return;
-    const chg  = parseFloat(q.change);
-    const col  = chg > 0 ? '#6dff98' : chg < 0 ? '#ff6b7d' : '#77b6ff';
-    const arr  = chg > 0 ? '▲' : chg < 0 ? '▼' : '—';
-    const icon = L.divIcon({
-      html: `<div class="mkt-label" style="border-color:${col};color:${col}">${q.symbol} ${arr}${Math.abs(chg)}%</div>`,
-      className: '', iconAnchor: [40, 14]
-    });
-    L.marker(pos, { icon })
-      .bindPopup(popup(`📈 ${q.symbol}`,
-        `Price: $${q.price}`,
-        `<span class="${chg>0?'positive':chg<0?'negative':'neutral'}">${chg>0?'+':''}${chg}% today</span>`
-      )).addTo(layers.markets);
-  });
-}
+// ═══════════════════════════════════════════════════════════
+// THREAT MATRIX — computed from live data
+// ═══════════════════════════════════════════════════════════
+function buildThreatMatrix() {
+  const maxMag  = Math.max(0, ...S.quakes.map(f => f.properties.mag || 0));
+  const fireCount  = S.events.filter(e => (e.categories?.[0]?.title || '').toLowerCase().includes('fire')).length;
+  const stormCount = S.events.filter(e => {
+    const c = (e.categories?.[0]?.title || '').toLowerCase();
+    return c.includes('storm') || c.includes('cyclone') || c.includes('hurricane') || c.includes('typhoon');
+  }).length;
+  const volcCount  = S.events.filter(e => (e.categories?.[0]?.title || '').toLowerCase().includes('volcano')).length;
+  const kp = S.kp ?? 0;
 
-// ============================================================
-// Live alerts panel
-// ============================================================
-function buildLiveAlerts() {
-  const alerts = [];
-
-  state.earthquakes
-    .filter(f => f.properties.mag >= 4.5)
-    .slice(0, 4)
-    .forEach(f => {
-      const mag   = f.properties.mag;
-      const place = f.properties.place || 'Unknown';
-      alerts.push({ icon: mag >= 6 ? '🚨' : '🔴', text: `M${mag} earthquake — ${place}`, cls: 'quake' });
-    });
-
-  state.eonetEvents.slice(0, 5).forEach(e => {
-    const cat = e.categories?.[0]?.title || 'Event';
-    alerts.push({ icon: catIcon(cat), text: e.title, cls: 'disaster' });
-  });
-
-  if (state.crypto.bitcoin) {
-    const c   = state.crypto.bitcoin;
-    const chg = c.usd_24h_change ?? 0;
-    if (Math.abs(chg) > 2) {
-      alerts.push({
-        icon: chg > 0 ? '📈' : '📉',
-        text: `BTC ${chg > 0 ? '+' : ''}${chg.toFixed(1)}% — $${fmtCrypto(c.usd)}`,
-        cls:  'market'
-      });
+  const rows = [
+    {
+      icon: '🔴', name: 'SEISMIC',
+      ...threatLevel(
+        maxMag >= 7   ? 1 :
+        maxMag >= 6   ? 0.78 :
+        maxMag >= 5   ? 0.52 :
+        maxMag >= 4   ? 0.28 : 0.12
+      )
+    },
+    {
+      icon: '🔥', name: 'WILDFIRE',
+      ...threatLevel(
+        fireCount >= 30 ? 1 :
+        fireCount >= 15 ? 0.75 :
+        fireCount >= 5  ? 0.45 :
+        fireCount >= 1  ? 0.25 : 0.05
+      )
+    },
+    {
+      icon: '🌀', name: 'TROPICAL',
+      ...threatLevel(
+        stormCount >= 5 ? 1 :
+        stormCount >= 3 ? 0.72 :
+        stormCount >= 1 ? 0.42 : 0.05
+      )
+    },
+    {
+      icon: '🌋', name: 'VOLCANIC',
+      ...threatLevel(
+        volcCount >= 10 ? 0.9 :
+        volcCount >= 5  ? 0.6 :
+        volcCount >= 1  ? 0.35 : 0.05
+      )
+    },
+    {
+      icon: '☀', name: 'SPACE WX',
+      ...threatLevel(
+        kp >= 7 ? 1 :
+        kp >= 5 ? 0.7 :
+        kp >= 3 ? 0.4 : 0.1
+      )
     }
-  }
+  ];
 
-  const container = document.getElementById('liveAlerts');
-  document.getElementById('alertCount').textContent = alerts.length;
-
-  if (!alerts.length) {
-    container.innerHTML = '<div class="empty-state">No active alerts</div>';
-    return;
-  }
-  container.innerHTML = alerts.map(a => `
-    <div class="alert-item alert-${a.cls}">
-      <span class="alert-icon">${a.icon}</span>
-      <span>${escapeHtml(a.text)}</span>
+  document.getElementById('threatMatrix').innerHTML = rows.map(r => `
+    <div class="threat-row">
+      <span class="threat-ico">${r.icon}</span>
+      <span class="threat-name">${r.name}</span>
+      <div class="threat-bar-wrap">
+        <div class="threat-bar-fill" style="width:${Math.round(r.pct * 100)}%;background:${r.color}"></div>
+      </div>
+      <span class="threat-lv ${r.cls}">${r.label}</span>
     </div>`).join('');
 }
 
-// ============================================================
-// Ticker
-// ============================================================
-function updateTicker() {
-  const items = [];
+function threatLevel(pct) {
+  if (pct >= 0.85) return { pct, label: 'CRITICAL', cls: 'lv-critical', color: 'var(--glow-red)' };
+  if (pct >= 0.6)  return { pct, label: 'HIGH',     cls: 'lv-high',     color: 'var(--glow-orng)' };
+  if (pct >= 0.35) return { pct, label: 'MODERATE', cls: 'lv-moderate', color: 'var(--glow-yell)' };
+  return              { pct, label: 'LOW',      cls: 'lv-low',      color: 'var(--glow-green)' };
+}
 
-  state.earthquakes
-    .filter(f => f.properties.mag >= 4)
-    .slice(0, 6)
-    .forEach(f => items.push(`🔴 M${f.properties.mag} — ${f.properties.place}`));
+// ═══════════════════════════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════════════════════════
+function buildTicker() {
+  const parts = [];
 
-  state.eonetEvents
-    .slice(0, 5)
-    .forEach(e => items.push(`${catIcon(e.categories?.[0]?.title||'')} ${e.title}`));
+  S.quakes.filter(f => f.properties.mag >= 5).slice(0, 4).forEach(f =>
+    parts.push(`⬤ M${f.properties.mag} ${f.properties.place}`));
 
-  if (state.crypto.bitcoin)  items.push(`₿ BTC $${fmtCrypto(state.crypto.bitcoin.usd)} (${(state.crypto.bitcoin.usd_24h_change||0).toFixed(1)}% 24h)`);
-  if (state.crypto.ethereum) items.push(`Ξ ETH $${fmtCrypto(state.crypto.ethereum.usd)} (${(state.crypto.ethereum.usd_24h_change||0).toFixed(1)}% 24h)`);
-  if (state.crypto.solana)   items.push(`◎ SOL $${fmtCrypto(state.crypto.solana.usd)} (${(state.crypto.solana.usd_24h_change||0).toFixed(1)}% 24h)`);
+  S.events.slice(0, 5).forEach(e =>
+    parts.push(`${catIcon(e.categories?.[0]?.title || '')} ${e.title}`));
 
-  state.stocks.slice(0, 4).forEach(q => {
-    const chg = parseFloat(q.change);
-    items.push(`${chg>=0?'▲':'▼'} ${q.symbol} $${q.price} (${chg>=0?'+':''}${q.change}%)`);
-  });
-
-  const track = document.getElementById('tickerTrack');
-  if (items.length) {
-    const text = items.join('     ·     ');
-    track.textContent = text + '     ·     ' + text; // duplicate for seamless loop
+  if (S.crypto.bitcoin) {
+    const b = S.crypto.bitcoin, ch = (b.usd_24h_change || 0);
+    parts.push(`₿ BTC $${fmtPrice(b.usd)} (${ch > 0 ? '+' : ''}${ch.toFixed(1)}%)`);
   }
+  if (S.crypto.ethereum) {
+    const e = S.crypto.ethereum, ch = (e.usd_24h_change || 0);
+    parts.push(`Ξ ETH $${fmtPrice(e.usd)} (${ch > 0 ? '+' : ''}${ch.toFixed(1)}%)`);
+  }
+  if (S.kp != null) parts.push(`☀ Kp INDEX: ${S.kp.toFixed(1)}`);
+  if (S.solarWind)  parts.push(`SOLAR WIND: ${Math.round(S.solarWind.speed)} km/s`);
+
+  const text = parts.join('     ◈     ');
+  document.getElementById('tickerInner').textContent = text + '     ◈     ' + text;
 }
 
-// ============================================================
-// UI setup
-// ============================================================
-function setupTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab).classList.add('active');
-    });
-  });
-}
-
+// ═══════════════════════════════════════════════════════════
+// UI SETUP
+// ═══════════════════════════════════════════════════════════
 function setupLayerButtons() {
-  document.querySelectorAll('.layer-btn').forEach(btn => {
+  document.querySelectorAll('.lbtn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeLayer = btn.dataset.layer;
-      switchLayer(activeLayer);
-    });
-  });
-}
-
-function setupNewsFilter() {
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentNewsFeed = btn.dataset.feed;
-      if (state.news[currentNewsFeed]?.length) {
-        renderNews(state.news[currentNewsFeed]);
+      const k = btn.dataset.layer;
+      if (activeLayers.has(k)) {
+        activeLayers.delete(k);
+        btn.classList.remove('active');
       } else {
-        loadNews(currentNewsFeed);
+        activeLayers.add(k);
+        btn.classList.add('active');
       }
+      syncLayers();
     });
   });
 }
 
-function setUpdatedTime() {
-  document.getElementById('updatedAt').textContent =
-    `UPDATED: ${new Date().toLocaleTimeString()}`;
+function setupNewsTabButtons() {
+  document.querySelectorAll('.itab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.itab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      newsTab = btn.dataset.feed;
+      if (S.news[newsTab]?.length) renderNews();
+      else loadNews(newsTab);
+    });
+  });
 }
 
-// ============================================================
-// Helpers
-// ============================================================
-function popup(...lines) {
-  return `<div class="map-popup">${lines.map((l, i) =>
-    i === 0 ? `<div class="popup-title">${l}</div>` : `<div class="popup-line">${l}</div>`
-  ).join('')}</div>`;
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function mp(title, ...lines) {
+  return `<div class="mp">
+    <div class="mp-title">${title}</div>
+    ${lines.map(l => `<div class="mp-row">${l}</div>`).join('')}
+  </div>`;
+}
+
+function divMkr(emoji, size, style = '') {
+  return L.divIcon({
+    html: `<div style="font-size:${size}px;line-height:1;${style}">${emoji}</div>`,
+    iconSize: [size, size], iconAnchor: [size / 2, size / 2], className: ''
+  });
+}
+
+function magColor(mag) {
+  if (mag >= 7) return '#ff0022';
+  if (mag >= 6) return '#ff3344';
+  if (mag >= 5) return '#ff7700';
+  if (mag >= 4) return '#ffd700';
+  if (mag >= 2) return '#57ffd6';
+  return '#2255aa';
 }
 
 function catIcon(cat) {
   const c = cat.toLowerCase();
-  if (c.includes('wildfire') || c.includes('fire'))                           return '🔥';
-  if (c.includes('volcano'))                                                  return '🌋';
-  if (c.includes('storm') || c.includes('cyclone') ||
-      c.includes('hurricane') || c.includes('typhoon'))                       return '🌀';
-  if (c.includes('flood'))                                                    return '🌊';
-  if (c.includes('earthquake'))                                               return '🔴';
-  if (c.includes('drought'))                                                  return '☀️';
-  if (c.includes('snow') || c.includes('ice') || c.includes('blizzard'))     return '❄️';
-  if (c.includes('landslide') || c.includes('avalanche'))                     return '⛰️';
-  if (c.includes('tsunami'))                                                  return '🌊';
-  return '⚠️';
+  if (c.includes('wildfire') || c.includes('fire'))                                        return '🔥';
+  if (c.includes('volcano'))                                                               return '🌋';
+  if (c.includes('storm') || c.includes('cyclone') || c.includes('hurricane') || c.includes('typhoon')) return '🌀';
+  if (c.includes('flood'))                                                                 return '🌊';
+  if (c.includes('earthquake'))                                                            return '🔴';
+  if (c.includes('drought'))                                                               return '☀';
+  if (c.includes('snow') || c.includes('ice') || c.includes('blizzard'))                  return '❄';
+  if (c.includes('landslide') || c.includes('avalanche'))                                  return '⛰';
+  if (c.includes('tsunami'))                                                               return '🌊';
+  return '⚠';
 }
 
-function fmtCrypto(price) {
-  if (price >= 10000) return price.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (price >= 1)     return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+function fmtPrice(n) {
+  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (n >= 1)    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+function shortPlace(place) {
+  // Remove "km N/S/E/W of" prefix
+  return place.replace(/^\d+\s*km\s+\w+\s+of\s+/i, '');
+}
+
+function ago(ts) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)   return 'Just now';
+  if (m < 60)  return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function regionFromCoords(lat, lng) {
+  // Very rough region inference from lat/lng
+  if (lat > 60)                         return 'Arctic Region';
+  if (lat < -60)                        return 'Antarctic Region';
+  if (lng > 100 && lng < 180 && lat > 0)  return 'East Asia / Pacific';
+  if (lng > 60 && lng < 100 && lat > 0)   return 'South / Central Asia';
+  if (lng > 25 && lng < 60 && lat > 15)   return 'Middle East';
+  if (lng > -20 && lng < 55 && lat > 0)   return 'Africa / Europe';
+  if (lng > -80 && lng < -35)             return 'South America';
+  if (lng > -140 && lng < -50 && lat > 15) return 'North America';
+  if (lng < -140 || lng > 160)            return 'Pacific Ocean';
+  return 'International Waters';
+}
+
+function none(msg) {
+  return `<div style="color:var(--text-dim);font-size:.72rem;padding:8px 0;font-style:italic">${msg}</div>`;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function injectCSS(id, css) {
+  if (document.getElementById(id)) return;
+  const s = document.createElement('style');
+  s.id = id; s.textContent = css;
+  document.head.appendChild(s);
 }

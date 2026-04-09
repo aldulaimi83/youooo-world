@@ -3,173 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YOUOOO World Intelligence</title>
+  <title>YOUOOO INTEL — Global Operations Center</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app-shell">
+<div class="hud">
 
-    <!-- Live ticker bar -->
-    <div class="ticker-bar">
-      <div class="ticker-label">◉ LIVE</div>
-      <div class="ticker-wrap">
-        <div class="ticker-track" id="tickerTrack">Loading live data...</div>
-      </div>
+  <!-- ══ HEADER ══ -->
+  <header class="hud-header">
+    <div class="brand">
+      <span class="brand-word">YOUOOO</span>
+      <span class="brand-sep">◈</span>
+      <span class="brand-sub">GLOBAL INTELLIGENCE</span>
     </div>
 
-    <!-- Top header -->
-    <header class="topbar">
-      <div class="brand-block">
-        <div class="brand">YOUOOO</div>
-        <div class="subtitle">World Intelligence Platform</div>
+    <div class="clocks" id="clocks">
+      <div class="clock-cell"><span class="tz-name">ZULU</span><span class="tz-time" id="tz-utc">--:--:--</span></div>
+      <div class="clock-cell"><span class="tz-name">NYC</span><span class="tz-time" id="tz-nyc">--:--:--</span></div>
+      <div class="clock-cell"><span class="tz-name">LONDON</span><span class="tz-time" id="tz-lon">--:--:--</span></div>
+      <div class="clock-cell"><span class="tz-name">DUBAI</span><span class="tz-time" id="tz-dxb">--:--:--</span></div>
+      <div class="clock-cell"><span class="tz-name">TOKYO</span><span class="tz-time" id="tz-tyo">--:--:--</span></div>
+    </div>
+
+    <div class="header-right">
+      <div class="sys-online"><span class="blink-dot"></span><span id="sysLabel">SYSTEMS ONLINE</span></div>
+      <div class="last-sync" id="lastSync">SYNC: —</div>
+    </div>
+  </header>
+
+  <!-- ══ MAIN 3-COLUMN GRID ══ -->
+  <div class="hud-main">
+
+    <!-- ── LEFT COLUMN ── -->
+    <aside class="col col-left">
+
+      <div class="panel" id="threatPanel">
+        <div class="panel-hd"><span class="panel-dot dot-red"></span>THREAT MATRIX</div>
+        <div class="panel-bd" id="threatMatrix">
+          <div class="scan-line">ANALYZING SIGNALS_</div>
+        </div>
       </div>
 
-      <div class="live-stats">
-        <div class="stat-pill">
-          <span class="stat-label">QUAKES</span>
-          <span class="stat-value accent-red" id="quakeCount">—</span>
+      <div class="panel" id="seismicPanel">
+        <div class="panel-hd">
+          <span class="panel-dot dot-orange"></span>SEISMIC ACTIVITY
+          <span class="panel-count" id="quakeCountBadge">—</span>
         </div>
-        <div class="stat-pill">
-          <span class="stat-label">FIRES</span>
-          <span class="stat-value accent-orange" id="fireCount">—</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">EVENTS</span>
-          <span class="stat-value accent-cyan" id="eventCount">—</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">ISS ALT</span>
-          <span class="stat-value accent-purple" id="issAlt">—</span>
+        <div class="panel-bd" id="seismicList">
+          <div class="scan-line">SCANNING EARTH_</div>
         </div>
       </div>
 
-      <div class="topbar-right">
-        <div class="status-pill online">● ONLINE</div>
-        <div class="status-pill live">◉ LIVE</div>
-        <div class="status-pill" id="updatedAt">UPDATED: —</div>
+      <div class="panel panel-grow" id="eventsPanel">
+        <div class="panel-hd">
+          <span class="panel-dot dot-yellow"></span>ACTIVE EVENTS
+          <span class="panel-count" id="eventsCountBadge">—</span>
+        </div>
+        <div class="panel-bd panel-scroll" id="eventsList">
+          <div class="scan-line">LOADING NASA DATA_</div>
+        </div>
       </div>
-    </header>
 
-    <main class="layout">
-      <!-- Map section -->
-      <section class="map-section">
-        <div id="map"></div>
+    </aside>
 
-        <!-- Layer switcher -->
-        <div class="floating-panel layers-panel">
-          <div class="panel-title-row">
-            <h3>MAP LAYERS</h3>
-          </div>
-          <div class="layer-grid">
-            <button class="layer-btn active" data-layer="earthquakes">🔴 Earthquakes</button>
-            <button class="layer-btn" data-layer="fires">🔥 Wildfires</button>
-            <button class="layer-btn" data-layer="volcanoes">🌋 Volcanoes</button>
-            <button class="layer-btn" data-layer="storms">🌀 Storms</button>
-            <button class="layer-btn" data-layer="iss">🛸 ISS Live</button>
-            <button class="layer-btn" data-layer="markets">📈 Markets</button>
+    <!-- ── CENTER MAP ── -->
+    <section class="col col-center">
+      <div class="map-bar">
+        <div class="layer-btns">
+          <button class="lbtn active" data-layer="earthquakes">⬤ SEISMIC</button>
+          <button class="lbtn" data-layer="fires">⬤ FIRES</button>
+          <button class="lbtn" data-layer="volcanoes">⬤ VOLCANOES</button>
+          <button class="lbtn" data-layer="storms">⬤ STORMS</button>
+          <button class="lbtn" data-layer="iss">⬤ ISS LIVE</button>
+        </div>
+        <div class="map-label-tag">LIVE OPERATIONAL MAP</div>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <!-- ── RIGHT COLUMN ── -->
+    <aside class="col col-right">
+
+      <div class="panel" id="assetsPanel">
+        <div class="panel-hd"><span class="panel-dot dot-green"></span>ASSET MONITOR</div>
+        <div class="panel-bd" id="assetList">
+          <div class="scan-line">CONNECTING MARKETS_</div>
+        </div>
+      </div>
+
+      <div class="panel panel-grow" id="intelPanel">
+        <div class="panel-hd">
+          <span class="panel-dot dot-blue"></span>INTEL REPORTS
+          <div class="intel-tab-row">
+            <button class="itab active" data-feed="world">WORLD</button>
+            <button class="itab" data-feed="tech">TECH</button>
+            <button class="itab" data-feed="business">BIZ</button>
+            <button class="itab" data-feed="science">SCI</button>
           </div>
         </div>
-
-        <!-- Live alerts -->
-        <div class="floating-panel alerts-panel">
-          <div class="panel-title-row">
-            <h3>LIVE ALERTS</h3>
-            <span class="alert-badge" id="alertCount">0</span>
-          </div>
-          <div id="liveAlerts" class="alerts-list">
-            <div class="empty-state">Loading alerts...</div>
-          </div>
+        <div class="panel-bd panel-scroll" id="intelList">
+          <div class="scan-line">DECRYPTING FEEDS_</div>
         </div>
-      </section>
+      </div>
 
-      <!-- Side panel -->
-      <aside class="side-panel">
-        <nav class="tabs">
-          <button class="tab-btn active" data-tab="marketsTab">📈 Markets</button>
-          <button class="tab-btn" data-tab="disastersTab">🌍 Disasters</button>
-          <button class="tab-btn" data-tab="newsTab">📰 News</button>
-          <button class="tab-btn" data-tab="spaceTab">🛸 Space</button>
-        </nav>
+      <div class="panel" id="orbitalPanel">
+        <div class="panel-hd"><span class="panel-dot dot-purple"></span>ORBITAL INTEL — ISS</div>
+        <div class="panel-bd" id="orbitalInfo">
+          <div class="scan-line">ACQUIRING SIGNAL_</div>
+        </div>
+      </div>
 
-        <!-- Markets -->
-        <section id="marketsTab" class="tab-content active">
-          <div class="card">
-            <h2>Crypto Prices</h2>
-            <p class="card-subtitle">Live via CoinGecko — no API key, always free</p>
-            <div id="cryptoGrid" class="watchlist-grid">
-              <div class="empty-state">Loading crypto...</div>
-            </div>
+    </aside>
 
-            <h3>Stock Watchlist</h3>
-            <p class="card-subtitle">Yahoo Finance via open proxy</p>
-            <div id="watchlistGrid" class="watchlist-grid">
-              <div class="empty-state">Loading stocks...</div>
-            </div>
-          </div>
-        </section>
+  </div><!-- .hud-main -->
 
-        <!-- Disasters -->
-        <section id="disastersTab" class="tab-content">
-          <div class="card">
-            <h2>Active Natural Events</h2>
-            <p class="card-subtitle">NASA EONET — open data, no key required</p>
-            <div id="disastersFeed" class="events-feed">
-              <div class="empty-state">Loading events...</div>
-            </div>
-          </div>
-        </section>
+  <!-- ══ FOOTER STATUS BAR ══ -->
+  <footer class="hud-footer">
+    <div class="foot-seg" id="swBar">☀ SPACE WEATHER: LOADING</div>
+    <div class="foot-div">◈</div>
+    <div class="foot-seg" id="issBar">🛸 ISS: LOCATING</div>
+    <div class="foot-div">◈</div>
+    <div class="foot-ticker" id="footTicker">
+      <span id="tickerInner">INITIALIZING GLOBAL INTELLIGENCE SYSTEMS...</span>
+    </div>
+  </footer>
 
-        <!-- News -->
-        <section id="newsTab" class="tab-content">
-          <div class="card">
-            <h2>World News</h2>
-            <p class="card-subtitle">BBC RSS feeds — free, no key required</p>
-            <div class="filter-row">
-              <button class="filter-btn active" data-feed="world">World</button>
-              <button class="filter-btn" data-feed="tech">Tech</button>
-              <button class="filter-btn" data-feed="business">Business</button>
-              <button class="filter-btn" data-feed="science">Science</button>
-            </div>
-            <div id="newsFeed" class="news-feed">
-              <div class="empty-state">Loading news...</div>
-            </div>
-          </div>
-        </section>
+</div><!-- .hud -->
 
-        <!-- Space -->
-        <section id="spaceTab" class="tab-content">
-          <div class="card">
-            <h2>Space Intelligence</h2>
-            <p class="card-subtitle">ISS tracking + NOAA space weather — all free</p>
-
-            <h3>🛸 ISS Live Position</h3>
-            <div id="issInfo" class="iss-card">
-              <div class="empty-state">Locating ISS...</div>
-            </div>
-
-            <h3>☀️ Space Weather</h3>
-            <div id="spaceWeather">
-              <div class="empty-state">Loading space weather...</div>
-            </div>
-          </div>
-        </section>
-      </aside>
-    </main>
-  </div>
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-  <script src="script.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="script.js"></script>
 </body>
 </html>
