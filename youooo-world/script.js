@@ -10,7 +10,8 @@ const API = {
   kp:        'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
   solar:     'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json',
   gecko:     'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,ripple,cardano,dogecoin,binancecoin&vs_currencies=usd&include_24hr_change=true',
-  opensky:   'https://opensky-network.org/api/states/all?lamin=20&lamax=65&lomin=-130&lomax=50',
+  // OpenSky global (no bounding box = more aircraft, same rate limit)
+  opensky:   'https://opensky-network.org/api/states/all',
   hn:        'https://hacker-news.firebaseio.com/v0/topstories.json',
   hnItem:    id => `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
   rss:       feed => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
@@ -41,14 +42,17 @@ const S = {
   iss:       null,
   kp:        0,
   solar:     null,
-  aircraft:  [],
+  aircraft:  [],        // last good aircraft data (cached)
+  aircraftTs: 0,        // timestamp of last successful fetch
   news:      {},
   hn:        [],
   wiki:      [],
   wikiRate:  0,
-  wikiEdits: 0,
-  wikiTimer: null
+  wikiEdits: 0
 };
+
+// OpenSky anonymous rate limit: 1 req / 10s. We enforce 20s minimum.
+const AIRCRAFT_MIN_INTERVAL = 20000;
 
 let map, lyr = {}, activeL = new Set(['earthquakes','aircraft']);
 let newsFeed = 'hn';
@@ -105,8 +109,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadAll();
   setInterval(loadAll, 5 * 60 * 1000);
   setInterval(tickISS, 10 * 1000);
-  setInterval(tickAircraft, 30 * 1000);
   setInterval(tickCrypto, 60 * 1000);
+
+  // Aircraft on its own timer — staggered 8s after page load to avoid
+  // colliding with the other APIs, then every 60s (well within rate limit)
+  setTimeout(() => {
+    loadAircraft();
+    setInterval(loadAircraft, 60 * 1000);
+  }, 8000);
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -163,7 +173,6 @@ async function loadAll() {
     loadCrypto(),
     loadISS(),
     loadSpaceWeather(),
-    loadAircraft(),
     loadHN(),
     loadRSS('world'),
     loadRSS('tech'),
@@ -270,26 +279,48 @@ async function loadEONET() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AIRCRAFT — OpenSky (free, anonymous, CORS OK)
+// AIRCRAFT — OpenSky (free, anonymous)
+// Rate limit: 1 req / 10s anonymous. We guard at 20s minimum.
+// On failure we keep showing cached data so map stays populated.
 // ═══════════════════════════════════════════════════════════
 async function loadAircraft() {
+  // Enforce minimum interval — skip silently if called too soon
+  const sinceLastFetch = Date.now() - S.aircraftTs;
+  if (S.aircraftTs > 0 && sinceLastFetch < AIRCRAFT_MIN_INTERVAL) return;
+
   try {
     const d = await getJSON(API.opensky);
-    const states = (d.states || []).filter(s => s[5] && s[6] && s[2]); // lon, lat, origin country
-    S.aircraft = states.slice(0, 600);
+    const raw = d.states || [];
+
+    // Valid states: must have longitude [5], latitude [6]
+    const states = raw.filter(s => s[5] != null && s[6] != null).slice(0, 800);
+
+    S.aircraft  = states;
+    S.aircraftTs = Date.now();
 
     lyr.aircraft.clearLayers();
-    S.aircraft.forEach(s => renderPlane(s));
+    states.forEach(s => renderPlane(s));
 
-    document.getElementById('hAircraft').textContent = (d.states||[]).length.toLocaleString();
-    renderAirPanel(S.aircraft);
-  } catch(e){
+    document.getElementById('hAircraft').textContent = raw.length.toLocaleString();
+    renderAirPanel(states, false);
+
+  } catch(e) {
     console.error('OpenSky:', e);
-    document.getElementById('airPanel').innerHTML = none('OpenSky rate-limited — try again in 1 min');
+    // If we have cached data, redraw it and show a subtle stale badge
+    if (S.aircraft.length > 0) {
+      lyr.aircraft.clearLayers();
+      S.aircraft.forEach(s => renderPlane(s));
+      renderAirPanel(S.aircraft, true);   // true = show stale badge
+    } else {
+      // No cache yet — show retry message
+      document.getElementById('airPanel').innerHTML =
+        `<div style="color:var(--dim);font-size:.72rem;padding:8px 0">
+           ✈ Fetching aircraft data...<br>
+           <span style="font-size:.65rem;opacity:.6">OpenSky allows 1 request / 10s — will retry automatically</span>
+         </div>`;
+    }
   }
 }
-
-async function tickAircraft() { await loadAircraft(); }
 
 function renderPlane(s) {
   const [,cs,,,,lng,lat,,vel,,trk,,,,cat] = s;
@@ -312,29 +343,29 @@ function renderPlane(s) {
     )).addTo(lyr.aircraft);
 }
 
-function renderAirPanel(states) {
-  const total  = states.length;
-  const airborne = states.filter(s => !s[8]); // on_ground = false
-  const byCountry = {};
-  states.forEach(s => { const c = s[2]||'?'; byCountry[c]=(byCountry[c]||0)+1; });
-  const topCtry = Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).slice(0,3);
-
-  const sample = states.filter(s=>(s[1]||'').trim()).slice(0,6);
+function renderAirPanel(states, stale = false) {
+  const total   = states.length;
+  const airborne = states.filter(s => !s[8]).length;
+  const sample  = states.filter(s => (s[1]||'').trim()).slice(0, 6);
+  const staleTag = stale
+    ? `<span style="color:var(--yellow);font-size:.55rem;margin-left:auto">CACHED</span>`
+    : '';
 
   document.getElementById('airPanel').innerHTML = `
     <div class="air-stat">
       <div class="as-cell"><div class="as-lbl">TRACKED</div><div class="as-val">${total.toLocaleString()}</div></div>
-      <div class="as-cell"><div class="as-lbl">AIRBORNE</div><div class="as-val">${airborne.length.toLocaleString()}</div></div>
+      <div class="as-cell"><div class="as-lbl">AIRBORNE</div><div class="as-val">${airborne.toLocaleString()}</div></div>
     </div>
+    ${stale ? `<div style="font-size:.6rem;color:var(--yellow);margin-bottom:5px;opacity:.8">▲ Showing cached data — refreshing…</div>` : ''}
     <div class="air-list">
       ${sample.map(s => {
-        const cs  = (s[1]||'').trim() || '?';
-        const alt = s[7]!=null ? Math.round(s[7]/100)/10+'km' : '?';
-        const spd = s[9] ? Math.round(s[9]*3.6)+'km/h' : '?';
+        const cs  = (s[1]||'').trim() || 'N/A';
+        const alt = s[7] != null ? (Math.round(s[7] / 100) / 10) + 'km' : '?';
+        const spd = s[9]  ? Math.round(s[9] * 3.6) + 'km/h' : '?';
         return `<div class="air-item">
           <span class="air-ico">✈</span>
           <span class="air-cs">${esc(cs)}</span>
-          <span class="air-info">${esc(s[2]||'')}</span>
+          <span class="air-info">${esc(s[2] || '')}</span>
           <span class="air-alt">${alt}</span>
         </div>`;
       }).join('')}
@@ -490,57 +521,78 @@ function renderNews() {
 
 // ═══════════════════════════════════════════════════════════
 // WIKIPEDIA LIVE STREAM — Server-Sent Events
+// Wikimedia sends named "message" events — must use addEventListener.
+// Auto-reconnects with backoff on error.
 // ═══════════════════════════════════════════════════════════
-function initWikiStream() {
-  try {
-    const es = new EventSource(API.wiki);
-    let perMinBucket = 0;
+let wikiES = null;
+let wikiReconnectDelay = 3000;
+let wikiConnected = false;
 
-    es.onmessage = e => {
+function initWikiStream() {
+  const el = document.getElementById('wikiList');
+  el.innerHTML = `<div class="scan" id="wikiStatus">CONNECTING TO STREAM_</div>`;
+
+  try {
+    if (wikiES) { try { wikiES.close(); } catch(_){} }
+
+    wikiES = new EventSource(API.wiki);
+
+    wikiES.onopen = () => {
+      wikiConnected = true;
+      wikiReconnectDelay = 3000;
+      document.getElementById('wikiStatus') &&
+        (document.getElementById('wikiStatus').textContent = 'STREAM LIVE — WAITING FOR EDITS...');
+    };
+
+    // Wikimedia uses named "message" events — onmessage alone misses some
+    const handleEdit = e => {
       try {
         const d = JSON.parse(e.data);
+
+        // Only human edits to main English Wikipedia articles
         if (d.type !== 'edit') return;
-        if (d.namespace !== 0) return; // main articles only
-        if (!d.title || d.bot) return; // skip bots
+        if (d.namespace !== 0) return;
+        if (!d.title) return;
+        if (d.bot) return;
+        if (d.meta?.domain && !d.meta.domain.includes('en.wikipedia')) return;
 
-        perMinBucket++;
         S.wikiEdits++;
-
-        const item = {
-          title:  d.title,
-          user:   d.user || '?',
-          url:    `https://en.wikipedia.org/wiki/${encodeURIComponent(d.title)}`,
-          time:   Date.now(),
-          diff:   (d.length?.new||0) - (d.length?.old||0)
-        };
-
-        S.wiki.unshift(item);
-        if (S.wiki.length > 25) S.wiki.pop();
+        S.wiki.unshift({
+          title: d.title,
+          user:  d.user  || 'anonymous',
+          url:   `https://en.wikipedia.org/wiki/${encodeURIComponent(d.title.replace(/ /g,'_'))}`,
+          time:  Date.now(),
+          diff:  (d.length?.new || 0) - (d.length?.old || 0)
+        });
+        if (S.wiki.length > 30) S.wiki.length = 30;
         renderWiki();
-      } catch(_){}
-    };
-
-    es.onerror = () => {
-      document.getElementById('wikiList').innerHTML = none('Wiki stream reconnecting...');
-    };
-
-    // Rate counter — edits per minute
-    setInterval(() => {
-      S.wikiRate = perMinBucket;
-      perMinBucket = 0;
-      document.getElementById('hWiki').textContent = S.wikiRate;
-    }, 60000);
-
-    // Tick the rate from current session edits
-    setInterval(() => {
-      if (S.wikiEdits > 0) {
         document.getElementById('hWiki').textContent = S.wikiEdits;
+      } catch(_) {}
+    };
+
+    wikiES.addEventListener('message', handleEdit);
+    wikiES.onmessage = handleEdit; // belt-and-suspenders
+
+    wikiES.onerror = () => {
+      wikiConnected = false;
+      if (S.wiki.length > 0) {
+        // Keep showing last edits — just add a reconnecting note
+        renderWiki();
+      } else {
+        el.innerHTML = `<div style="color:var(--dim);font-size:.7rem;padding:6px 0">
+          Reconnecting to Wikipedia stream...<br>
+          <span style="opacity:.5;font-size:.62rem">Retrying in ${wikiReconnectDelay/1000}s</span>
+        </div>`;
       }
-    }, 5000);
+      setTimeout(() => {
+        wikiReconnectDelay = Math.min(wikiReconnectDelay * 1.5, 30000);
+        initWikiStream();
+      }, wikiReconnectDelay);
+    };
 
   } catch(e) {
     console.error('Wiki SSE:', e);
-    document.getElementById('wikiList').innerHTML = none('Wiki stream unavailable');
+    el.innerHTML = none('Wikipedia stream unavailable in this browser');
   }
 }
 
