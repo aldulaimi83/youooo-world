@@ -10,8 +10,12 @@ const API = {
   kp:        'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
   solar:     'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json',
   gecko:     'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,ripple,cardano,dogecoin,binancecoin&vs_currencies=usd&include_24hr_change=true',
-  // OpenSky global (no bounding box = more aircraft, same rate limit)
-  opensky:   'https://opensky-network.org/api/states/all',
+  // OpenSky with bounding box — keeps payload small enough for browsers
+  opensky:   'https://opensky-network.org/api/states/all?lamin=10&lamax=75&lomin=-130&lomax=160',
+  // ADSB.lol — completely free, no rate limit, used as fallback
+  adsbNA:    'https://api.adsb.lol/v2/lat/40/lon/-95/dist/2500',
+  adsbEU:    'https://api.adsb.lol/v2/lat/50/lon/10/dist/2500',
+  adsbME:    'https://api.adsb.lol/v2/lat/25/lon/50/dist/2000',
   hn:        'https://hacker-news.firebaseio.com/v0/topstories.json',
   hnItem:    id => `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
   rss:       feed => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
@@ -279,94 +283,146 @@ async function loadEONET() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AIRCRAFT — OpenSky (free, anonymous)
-// Rate limit: 1 req / 10s anonymous. We guard at 20s minimum.
-// On failure we keep showing cached data so map stays populated.
+// AIRCRAFT — OpenSky primary, ADSB.lol fallback (both free)
+// OpenSky: 1 req/10s anonymous limit — we guard at 20s minimum.
+// ADSB.lol: no rate limit, no key, open CORS.
 // ═══════════════════════════════════════════════════════════
 async function loadAircraft() {
-  // Enforce minimum interval — skip silently if called too soon
   const sinceLastFetch = Date.now() - S.aircraftTs;
   if (S.aircraftTs > 0 && sinceLastFetch < AIRCRAFT_MIN_INTERVAL) return;
 
+  let planes = null;
+
+  // ── Try OpenSky first (10s timeout) ──
   try {
-    const d = await getJSON(API.opensky);
+    const d = await fetchWithTimeout(API.opensky, 10000);
     const raw = d.states || [];
-
-    // Valid states: must have longitude [5], latitude [6]
-    const states = raw.filter(s => s[5] != null && s[6] != null).slice(0, 800);
-
-    S.aircraft  = states;
-    S.aircraftTs = Date.now();
-
-    lyr.aircraft.clearLayers();
-    states.forEach(s => renderPlane(s));
-
-    document.getElementById('hAircraft').textContent = raw.length.toLocaleString();
-    renderAirPanel(states, false);
-
+    // OpenSky field indices: [0]icao24 [1]callsign [2]country [3]time_pos
+    // [4]last_contact [5]lon [6]lat [7]baro_alt [8]on_ground [9]velocity
+    // [10]true_track [11]vert_rate [12]sensors [13]geo_alt [14]squawk
+    planes = raw
+      .filter(s => s[5] != null && s[6] != null && !s[8]) // must have coords + airborne
+      .slice(0, 1000)
+      .map(s => ({
+        icao:     s[0] || '',
+        cs:       (s[1] || '').trim() || s[0] || 'N/A',
+        country:  s[2] || '',
+        lon:      s[5],
+        lat:      s[6],
+        alt:      s[7],          // baro altitude metres
+        ground:   s[8],
+        vel:      s[9],          // m/s → convert to km/h on display
+        hdg:      s[10] || 0,
+        src:      'opensky'
+      }));
+    console.log(`OpenSky: ${planes.length} aircraft`);
   } catch(e) {
-    console.error('OpenSky:', e);
-    // If we have cached data, redraw it and show a subtle stale badge
-    if (S.aircraft.length > 0) {
-      lyr.aircraft.clearLayers();
-      S.aircraft.forEach(s => renderPlane(s));
-      renderAirPanel(S.aircraft, true);   // true = show stale badge
-    } else {
-      // No cache yet — show retry message
-      document.getElementById('airPanel').innerHTML =
-        `<div style="color:var(--dim);font-size:.72rem;padding:8px 0">
-           ✈ Fetching aircraft data...<br>
-           <span style="font-size:.65rem;opacity:.6">OpenSky allows 1 request / 10s — will retry automatically</span>
-         </div>`;
+    console.warn('OpenSky failed, trying ADSB.lol:', e.message);
+  }
+
+  // ── Fallback: ADSB.lol (no rate limit, no key) ──
+  if (!planes || planes.length === 0) {
+    try {
+      const [na, eu, me] = await Promise.allSettled([
+        fetchWithTimeout(API.adsbNA, 10000),
+        fetchWithTimeout(API.adsbEU, 10000),
+        fetchWithTimeout(API.adsbME, 10000)
+      ]);
+
+      const all = [];
+      for (const r of [na, eu, me]) {
+        if (r.status === 'fulfilled' && r.value?.ac) {
+          all.push(...r.value.ac);
+        }
+      }
+
+      // Deduplicate by hex
+      const seen = new Set();
+      planes = all
+        .filter(a => a.lat != null && a.lon != null && !seen.has(a.hex) && seen.add(a.hex))
+        .map(a => ({
+          icao:    a.hex   || '',
+          cs:      (a.flight || a.hex || 'N/A').trim(),
+          country: a.r     || '',
+          lon:     a.lon,
+          lat:     a.lat,
+          alt:     a.alt_baro != null ? a.alt_baro * 0.3048 : null, // ft→m
+          ground:  a.alt_baro === 'ground',
+          vel:     a.gs    != null ? a.gs * 0.514444 : null, // knots→m/s
+          hdg:     a.track || 0,
+          src:     'adsb'
+        }))
+        .slice(0, 1000);
+
+      console.log(`ADSB.lol: ${planes.length} aircraft`);
+    } catch(e) {
+      console.error('ADSB.lol also failed:', e);
     }
   }
+
+  if (!planes || planes.length === 0) {
+    // Keep cached data on map if we have it
+    if (S.aircraft.length > 0) {
+      renderAirPanel(S.aircraft, true);
+    } else {
+      document.getElementById('airPanel').innerHTML =
+        `<div style="color:var(--dim);font-size:.72rem;padding:10px 0;line-height:1.6">
+          ✈ Loading aircraft data...<br>
+          <span style="font-size:.62rem;opacity:.5">Retries automatically every 60s</span>
+        </div>`;
+    }
+    return;
+  }
+
+  S.aircraft  = planes;
+  S.aircraftTs = Date.now();
+
+  lyr.aircraft.clearLayers();
+  planes.forEach(p => renderPlane(p));
+
+  document.getElementById('hAircraft').textContent = planes.length.toLocaleString();
+  renderAirPanel(planes, false);
 }
 
-function renderPlane(s) {
-  const [,cs,,,,lng,lat,,vel,,trk,,,,cat] = s;
-  if (!lat||!lng) return;
-  const hdg = trk || 0;
+function renderPlane(p) {
+  if (p.lat == null || p.lon == null) return;
+  const hdg = p.hdg || 0;
   const icon = L.divIcon({
-    html:`<div class="ac-icon" style="transform:rotate(${hdg}deg)">✈</div>`,
-    iconSize:[18,18], iconAnchor:[9,9], className:''
+    html: `<div class="ac-icon" style="transform:rotate(${hdg}deg)">✈</div>`,
+    iconSize: [18, 18], iconAnchor: [9, 9], className: ''
   });
-  const alt = s[7] != null ? `${Math.round(s[7])} m` : 'N/A';
-  const spd = vel ? `${Math.round(vel * 3.6)} km/h` : 'N/A';
-  const callsign = (cs||'').trim() || 'UNKNOWN';
-  L.marker([lat,lng], { icon })
+  const altStr = p.alt != null ? `${Math.round(p.alt).toLocaleString()} m` : 'N/A';
+  const spdStr = p.vel != null ? `${Math.round(p.vel * 3.6).toLocaleString()} km/h` : 'N/A';
+  L.marker([p.lat, p.lon], { icon })
     .bindPopup(mp('✈ AIRCRAFT',
-      `<b>${esc(callsign)}</b>`,
-      `Origin: ${esc(s[2]||'?')}`,
-      `Altitude: <b>${alt}</b>`,
-      `Speed: <b>${spd}</b>`,
+      `<b>${esc(p.cs)}</b>`,
+      `Origin: ${esc(p.country || '?')}`,
+      `Altitude: <b>${altStr}</b>`,
+      `Speed: <b>${spdStr}</b>`,
       `Heading: ${Math.round(hdg)}°`
     )).addTo(lyr.aircraft);
 }
 
-function renderAirPanel(states, stale = false) {
-  const total   = states.length;
-  const airborne = states.filter(s => !s[8]).length;
-  const sample  = states.filter(s => (s[1]||'').trim()).slice(0, 6);
-  const staleTag = stale
-    ? `<span style="color:var(--yellow);font-size:.55rem;margin-left:auto">CACHED</span>`
-    : '';
+function renderAirPanel(planes, stale = false) {
+  const total   = planes.length;
+  const sample  = planes.filter(p => p.cs && p.cs !== 'N/A').slice(0, 6);
+  const src     = planes[0]?.src === 'adsb' ? 'ADSB.LOL' : 'OPENSKY';
 
   document.getElementById('airPanel').innerHTML = `
     <div class="air-stat">
       <div class="as-cell"><div class="as-lbl">TRACKED</div><div class="as-val">${total.toLocaleString()}</div></div>
-      <div class="as-cell"><div class="as-lbl">AIRBORNE</div><div class="as-val">${airborne.toLocaleString()}</div></div>
+      <div class="as-cell"><div class="as-lbl">SOURCE</div><div class="as-val" style="font-size:.7rem">${src}</div></div>
     </div>
-    ${stale ? `<div style="font-size:.6rem;color:var(--yellow);margin-bottom:5px;opacity:.8">▲ Showing cached data — refreshing…</div>` : ''}
+    ${stale ? `<div style="font-size:.6rem;color:var(--yellow);margin-bottom:5px;opacity:.8">▲ Cached — refreshing…</div>` : ''}
     <div class="air-list">
-      ${sample.map(s => {
-        const cs  = (s[1]||'').trim() || 'N/A';
-        const alt = s[7] != null ? (Math.round(s[7] / 100) / 10) + 'km' : '?';
-        const spd = s[9]  ? Math.round(s[9] * 3.6) + 'km/h' : '?';
+      ${sample.map(p => {
+        const altStr = p.alt != null ? (Math.round(p.alt / 100) / 10) + 'km' : '?';
+        const spdStr = p.vel != null ? Math.round(p.vel * 3.6) + 'km/h' : '?';
         return `<div class="air-item">
           <span class="air-ico">✈</span>
-          <span class="air-cs">${esc(cs)}</span>
-          <span class="air-info">${esc(s[2] || '')}</span>
-          <span class="air-alt">${alt}</span>
+          <span class="air-cs">${esc(p.cs)}</span>
+          <span class="air-info">${esc(p.country)}</span>
+          <span class="air-alt">${altStr}</span>
         </div>`;
       }).join('')}
     </div>`;
@@ -781,6 +837,18 @@ async function getJSON(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
+}
+
+async function fetchWithTimeout(url, ms = 10000) {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  } finally {
+    clearTimeout(tid);
+  }
 }
 
 function mp(title, ...lines) {
