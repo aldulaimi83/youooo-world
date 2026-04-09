@@ -10,16 +10,17 @@ const API = {
   kp:        'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
   solar:     'https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json',
   gecko:     'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,ripple,cardano,dogecoin,binancecoin&vs_currencies=usd&include_24hr_change=true',
-  // OpenSky with bounding box — keeps payload small enough for browsers
-  opensky:   'https://opensky-network.org/api/states/all?lamin=10&lamax=75&lomin=-130&lomax=160',
-  // ADSB.lol — completely free, no rate limit, used as fallback
-  adsbNA:    'https://api.adsb.lol/v2/lat/40/lon/-95/dist/2500',
-  adsbEU:    'https://api.adsb.lol/v2/lat/50/lon/10/dist/2500',
-  adsbME:    'https://api.adsb.lol/v2/lat/25/lon/50/dist/2000',
+  // airplanes.live — free, no key, open CORS, browser-safe
+  // Multiple regional queries to get global coverage
+  planesNA:  'https://api.airplanes.live/v2/point/40/-95/2000',
+  planesEU:  'https://api.airplanes.live/v2/point/51/10/2000',
+  planesME:  'https://api.airplanes.live/v2/point/25/55/2000',
+  planesAS:  'https://api.airplanes.live/v2/point/35/120/2000',
   hn:        'https://hacker-news.firebaseio.com/v0/topstories.json',
   hnItem:    id => `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
   rss:       feed => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
-  wiki:      'https://stream.wikimedia.org/v2/stream/recentchange'
+  // Wikipedia REST API — origin=* means full CORS, no key, polls every 15s
+  wiki:      'https://en.wikipedia.org/w/api.php?action=query&list=recentchanges&rcnamespace=0&rclimit=20&rcprop=title|user|sizes|timestamp&format=json&origin=*&rctype=edit&rcshow=!bot'
 };
 
 const RSS_URLS = {
@@ -283,105 +284,74 @@ async function loadEONET() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AIRCRAFT — OpenSky primary, ADSB.lol fallback (both free)
-// OpenSky: 1 req/10s anonymous limit — we guard at 20s minimum.
-// ADSB.lol: no rate limit, no key, open CORS.
+// AIRCRAFT — airplanes.live (free, open CORS, no key)
+// 4 regional queries run in parallel for global coverage.
+// Deduplicates by hex code.
 // ═══════════════════════════════════════════════════════════
 async function loadAircraft() {
   const sinceLastFetch = Date.now() - S.aircraftTs;
   if (S.aircraftTs > 0 && sinceLastFetch < AIRCRAFT_MIN_INTERVAL) return;
 
-  let planes = null;
-
-  // ── Try OpenSky first (10s timeout) ──
   try {
-    const d = await fetchWithTimeout(API.opensky, 10000);
-    const raw = d.states || [];
-    // OpenSky field indices: [0]icao24 [1]callsign [2]country [3]time_pos
-    // [4]last_contact [5]lon [6]lat [7]baro_alt [8]on_ground [9]velocity
-    // [10]true_track [11]vert_rate [12]sensors [13]geo_alt [14]squawk
-    planes = raw
-      .filter(s => s[5] != null && s[6] != null && !s[8]) // must have coords + airborne
-      .slice(0, 1000)
-      .map(s => ({
-        icao:     s[0] || '',
-        cs:       (s[1] || '').trim() || s[0] || 'N/A',
-        country:  s[2] || '',
-        lon:      s[5],
-        lat:      s[6],
-        alt:      s[7],          // baro altitude metres
-        ground:   s[8],
-        vel:      s[9],          // m/s → convert to km/h on display
-        hdg:      s[10] || 0,
-        src:      'opensky'
-      }));
-    console.log(`OpenSky: ${planes.length} aircraft`);
-  } catch(e) {
-    console.warn('OpenSky failed, trying ADSB.lol:', e.message);
-  }
+    const results = await Promise.allSettled([
+      fetchWithTimeout(API.planesNA, 12000),
+      fetchWithTimeout(API.planesEU, 12000),
+      fetchWithTimeout(API.planesME, 12000),
+      fetchWithTimeout(API.planesAS, 12000)
+    ]);
 
-  // ── Fallback: ADSB.lol (no rate limit, no key) ──
-  if (!planes || planes.length === 0) {
-    try {
-      const [na, eu, me] = await Promise.allSettled([
-        fetchWithTimeout(API.adsbNA, 10000),
-        fetchWithTimeout(API.adsbEU, 10000),
-        fetchWithTimeout(API.adsbME, 10000)
-      ]);
+    const seen = new Set();
+    const planes = [];
 
-      const all = [];
-      for (const r of [na, eu, me]) {
-        if (r.status === 'fulfilled' && r.value?.ac) {
-          all.push(...r.value.ac);
-        }
-      }
-
-      // Deduplicate by hex
-      const seen = new Set();
-      planes = all
-        .filter(a => a.lat != null && a.lon != null && !seen.has(a.hex) && seen.add(a.hex))
-        .map(a => ({
-          icao:    a.hex   || '',
+    for (const r of results) {
+      if (r.status !== 'fulfilled' || !r.value?.ac) continue;
+      for (const a of r.value.ac) {
+        if (a.lat == null || a.lon == null) continue;
+        if (seen.has(a.hex)) continue;
+        seen.add(a.hex);
+        planes.push({
+          icao:    a.hex || '',
           cs:      (a.flight || a.hex || 'N/A').trim(),
-          country: a.r     || '',
+          country: a.r || '',
           lon:     a.lon,
           lat:     a.lat,
-          alt:     a.alt_baro != null ? a.alt_baro * 0.3048 : null, // ft→m
+          alt:     a.alt_baro != null && a.alt_baro !== 'ground'
+                     ? Math.round(a.alt_baro * 0.3048)  // ft → m
+                     : null,
           ground:  a.alt_baro === 'ground',
-          vel:     a.gs    != null ? a.gs * 0.514444 : null, // knots→m/s
+          vel:     a.gs != null ? a.gs * 1.852 : null,  // knots → km/h directly
           hdg:     a.track || 0,
-          src:     'adsb'
-        }))
-        .slice(0, 1000);
-
-      console.log(`ADSB.lol: ${planes.length} aircraft`);
-    } catch(e) {
-      console.error('ADSB.lol also failed:', e);
+          src:     'airplanes.live'
+        });
+      }
     }
-  }
 
-  if (!planes || planes.length === 0) {
-    // Keep cached data on map if we have it
+    if (planes.length === 0) throw new Error('No aircraft in any region');
+
+    S.aircraft   = planes;
+    S.aircraftTs = Date.now();
+
+    lyr.aircraft.clearLayers();
+    planes.forEach(p => renderPlane(p));
+
+    document.getElementById('hAircraft').textContent = planes.length.toLocaleString();
+    renderAirPanel(planes, false);
+
+  } catch(e) {
+    console.error('Aircraft load failed:', e.message);
     if (S.aircraft.length > 0) {
+      // redraw cached positions
+      lyr.aircraft.clearLayers();
+      S.aircraft.forEach(p => renderPlane(p));
       renderAirPanel(S.aircraft, true);
     } else {
       document.getElementById('airPanel').innerHTML =
-        `<div style="color:var(--dim);font-size:.72rem;padding:10px 0;line-height:1.6">
-          ✈ Loading aircraft data...<br>
-          <span style="font-size:.62rem;opacity:.5">Retries automatically every 60s</span>
+        `<div style="color:var(--dim);font-size:.72rem;padding:10px 0;line-height:1.8">
+          ✈ Connecting to aircraft feed...<br>
+          <span style="font-size:.62rem;opacity:.5">airplanes.live · retries every 60s</span>
         </div>`;
     }
-    return;
   }
-
-  S.aircraft  = planes;
-  S.aircraftTs = Date.now();
-
-  lyr.aircraft.clearLayers();
-  planes.forEach(p => renderPlane(p));
-
-  document.getElementById('hAircraft').textContent = planes.length.toLocaleString();
-  renderAirPanel(planes, false);
 }
 
 function renderPlane(p) {
@@ -392,7 +362,7 @@ function renderPlane(p) {
     iconSize: [18, 18], iconAnchor: [9, 9], className: ''
   });
   const altStr = p.alt != null ? `${Math.round(p.alt).toLocaleString()} m` : 'N/A';
-  const spdStr = p.vel != null ? `${Math.round(p.vel * 3.6).toLocaleString()} km/h` : 'N/A';
+  const spdStr = p.vel != null ? `${Math.round(p.vel).toLocaleString()} km/h` : 'N/A';
   L.marker([p.lat, p.lon], { icon })
     .bindPopup(mp('✈ AIRCRAFT',
       `<b>${esc(p.cs)}</b>`,
@@ -417,7 +387,7 @@ function renderAirPanel(planes, stale = false) {
     <div class="air-list">
       ${sample.map(p => {
         const altStr = p.alt != null ? (Math.round(p.alt / 100) / 10) + 'km' : '?';
-        const spdStr = p.vel != null ? Math.round(p.vel * 3.6) + 'km/h' : '?';
+        const spdStr = p.vel != null ? Math.round(p.vel) + 'km/h' : '?';
         return `<div class="air-item">
           <span class="air-ico">✈</span>
           <span class="air-cs">${esc(p.cs)}</span>
@@ -576,79 +546,56 @@ function renderNews() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// WIKIPEDIA LIVE STREAM — Server-Sent Events
-// Wikimedia sends named "message" events — must use addEventListener.
-// Auto-reconnects with backoff on error.
+// WIKIPEDIA LIVE PULSE — REST API polling (origin=* = full CORS)
+// Polls every 15s, deduplicates by revid so each edit shown once.
+// Far more reliable than SSE which browsers block cross-origin.
 // ═══════════════════════════════════════════════════════════
-let wikiES = null;
-let wikiReconnectDelay = 3000;
-let wikiConnected = false;
+const wikiSeen = new Set();
 
 function initWikiStream() {
-  const el = document.getElementById('wikiList');
-  el.innerHTML = `<div class="scan" id="wikiStatus">CONNECTING TO STREAM_</div>`;
+  document.getElementById('wikiList').innerHTML =
+    `<div class="scan" id="wikiStatus">CONNECTING TO WIKIPEDIA_</div>`;
+  pollWiki();
+  setInterval(pollWiki, 15000);
+}
 
+async function pollWiki() {
   try {
-    if (wikiES) { try { wikiES.close(); } catch(_){} }
+    const data = await fetchWithTimeout(API.wiki, 8000);
+    const changes = data?.query?.recentchanges || [];
 
-    wikiES = new EventSource(API.wiki);
+    let added = 0;
+    for (const c of changes) {
+      if (!c.title || !c.revid) continue;
+      if (wikiSeen.has(c.revid)) continue;
+      wikiSeen.add(c.revid);
 
-    wikiES.onopen = () => {
-      wikiConnected = true;
-      wikiReconnectDelay = 3000;
-      document.getElementById('wikiStatus') &&
-        (document.getElementById('wikiStatus').textContent = 'STREAM LIVE — WAITING FOR EDITS...');
-    };
+      const diff = (c.newlen || 0) - (c.oldlen || 0);
+      S.wiki.unshift({
+        title: c.title,
+        user:  c.user || 'anonymous',
+        url:   `https://en.wikipedia.org/wiki/${encodeURIComponent(c.title.replace(/ /g, '_'))}`,
+        time:  c.timestamp ? new Date(c.timestamp).getTime() : Date.now(),
+        diff
+      });
+      S.wikiEdits++;
+      added++;
+    }
 
-    // Wikimedia uses named "message" events — onmessage alone misses some
-    const handleEdit = e => {
-      try {
-        const d = JSON.parse(e.data);
+    if (S.wiki.length > 40) S.wiki.length = 40;
+    if (added > 0) renderWiki();
 
-        // Only human edits to main English Wikipedia articles
-        if (d.type !== 'edit') return;
-        if (d.namespace !== 0) return;
-        if (!d.title) return;
-        if (d.bot) return;
-        if (d.meta?.domain && !d.meta.domain.includes('en.wikipedia')) return;
-
-        S.wikiEdits++;
-        S.wiki.unshift({
-          title: d.title,
-          user:  d.user  || 'anonymous',
-          url:   `https://en.wikipedia.org/wiki/${encodeURIComponent(d.title.replace(/ /g,'_'))}`,
-          time:  Date.now(),
-          diff:  (d.length?.new || 0) - (d.length?.old || 0)
-        });
-        if (S.wiki.length > 30) S.wiki.length = 30;
-        renderWiki();
-        document.getElementById('hWiki').textContent = S.wikiEdits;
-      } catch(_) {}
-    };
-
-    wikiES.addEventListener('message', handleEdit);
-    wikiES.onmessage = handleEdit; // belt-and-suspenders
-
-    wikiES.onerror = () => {
-      wikiConnected = false;
-      if (S.wiki.length > 0) {
-        // Keep showing last edits — just add a reconnecting note
-        renderWiki();
-      } else {
-        el.innerHTML = `<div style="color:var(--dim);font-size:.7rem;padding:6px 0">
-          Reconnecting to Wikipedia stream...<br>
-          <span style="opacity:.5;font-size:.62rem">Retrying in ${wikiReconnectDelay/1000}s</span>
-        </div>`;
-      }
-      setTimeout(() => {
-        wikiReconnectDelay = Math.min(wikiReconnectDelay * 1.5, 30000);
-        initWikiStream();
-      }, wikiReconnectDelay);
-    };
+    document.getElementById('hWiki').textContent = S.wikiEdits;
 
   } catch(e) {
-    console.error('Wiki SSE:', e);
-    el.innerHTML = none('Wikipedia stream unavailable in this browser');
+    console.error('Wiki poll:', e.message);
+    if (S.wiki.length === 0) {
+      document.getElementById('wikiList').innerHTML =
+        `<div style="color:var(--dim);font-size:.7rem;padding:6px 0;line-height:1.6">
+          Polling Wikipedia...<br>
+          <span style="opacity:.5;font-size:.62rem">Retries every 15s</span>
+        </div>`;
+    }
   }
 }
 
