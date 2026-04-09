@@ -16,51 +16,73 @@
 </head>
 <body>
   <div class="app-shell">
+
+    <!-- Live ticker bar -->
+    <div class="ticker-bar">
+      <div class="ticker-label">◉ LIVE</div>
+      <div class="ticker-wrap">
+        <div class="ticker-track" id="tickerTrack">Loading live data...</div>
+      </div>
+    </div>
+
+    <!-- Top header -->
     <header class="topbar">
       <div class="brand-block">
         <div class="brand">YOUOOO</div>
-        <div class="subtitle">World • Markets • Jobs • AI Alerts</div>
+        <div class="subtitle">World Intelligence Platform</div>
+      </div>
+
+      <div class="live-stats">
+        <div class="stat-pill">
+          <span class="stat-label">QUAKES</span>
+          <span class="stat-value accent-red" id="quakeCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">FIRES</span>
+          <span class="stat-value accent-orange" id="fireCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">EVENTS</span>
+          <span class="stat-value accent-cyan" id="eventCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">ISS ALT</span>
+          <span class="stat-value accent-purple" id="issAlt">—</span>
+        </div>
       </div>
 
       <div class="topbar-right">
-        <div class="status-pill online">STATUS: ONLINE</div>
-        <div class="status-pill live">MODE: LIVE</div>
-        <div class="status-pill" id="updatedAt">UPDATED: --</div>
+        <div class="status-pill online">● ONLINE</div>
+        <div class="status-pill live">◉ LIVE</div>
+        <div class="status-pill" id="updatedAt">UPDATED: —</div>
       </div>
     </header>
 
     <main class="layout">
+      <!-- Map section -->
       <section class="map-section">
         <div id="map"></div>
 
+        <!-- Layer switcher -->
         <div class="floating-panel layers-panel">
           <div class="panel-title-row">
-            <h3>TACTICAL LAYERS</h3>
-            <span class="mini-sep">—</span>
+            <h3>MAP LAYERS</h3>
           </div>
-
           <div class="layer-grid">
-            <button class="layer-btn active" data-layer="earthquakes">Earthquakes</button>
-            <button class="layer-btn" data-layer="markets">Markets</button>
-            <button class="layer-btn" data-layer="jobs">Jobs</button>
-            <button class="layer-btn" data-layer="ai">AI Alerts</button>
+            <button class="layer-btn active" data-layer="earthquakes">🔴 Earthquakes</button>
+            <button class="layer-btn" data-layer="fires">🔥 Wildfires</button>
+            <button class="layer-btn" data-layer="volcanoes">🌋 Volcanoes</button>
+            <button class="layer-btn" data-layer="storms">🌀 Storms</button>
+            <button class="layer-btn" data-layer="iss">🛸 ISS Live</button>
+            <button class="layer-btn" data-layer="markets">📈 Markets</button>
           </div>
-
-          <div class="tag-row">
-            <span class="tag">Ukraine</span>
-            <span class="tag">Middle East</span>
-            <span class="tag">Africa</span>
-          </div>
-
-          <p class="panel-note">
-            Drag panels • Toggle layers • Track world signals and market reaction.
-          </p>
         </div>
 
+        <!-- Live alerts -->
         <div class="floating-panel alerts-panel">
           <div class="panel-title-row">
             <h3>LIVE ALERTS</h3>
-            <span class="mini-sep">—</span>
+            <span class="alert-badge" id="alertCount">0</span>
           </div>
           <div id="liveAlerts" class="alerts-list">
             <div class="empty-state">Loading alerts...</div>
@@ -68,80 +90,74 @@
         </div>
       </section>
 
+      <!-- Side panel -->
       <aside class="side-panel">
         <nav class="tabs">
-          <button class="tab-btn active" data-tab="marketsTab">Markets</button>
-          <button class="tab-btn" data-tab="jobsTab">Jobs</button>
-          <button class="tab-btn" data-tab="aiTab">AI Alerts</button>
+          <button class="tab-btn active" data-tab="marketsTab">📈 Markets</button>
+          <button class="tab-btn" data-tab="disastersTab">🌍 Disasters</button>
+          <button class="tab-btn" data-tab="newsTab">📰 News</button>
+          <button class="tab-btn" data-tab="spaceTab">🛸 Space</button>
         </nav>
 
+        <!-- Markets -->
         <section id="marketsTab" class="tab-content active">
           <div class="card">
-            <h2>Stock Sentiment Radar</h2>
-            <p class="card-subtitle">
-              Track macro events, price action, movers, and quick watchlist signals.
-            </p>
+            <h2>Crypto Prices</h2>
+            <p class="card-subtitle">Live via CoinGecko — no API key, always free</p>
+            <div id="cryptoGrid" class="watchlist-grid">
+              <div class="empty-state">Loading crypto...</div>
+            </div>
 
-            <h3>Top Watchlist</h3>
+            <h3>Stock Watchlist</h3>
+            <p class="card-subtitle">Yahoo Finance via open proxy</p>
             <div id="watchlistGrid" class="watchlist-grid">
-              <div class="empty-state">Loading watchlist...</div>
+              <div class="empty-state">Loading stocks...</div>
             </div>
+          </div>
+        </section>
 
-            <h3>Market Movers</h3>
-            <div id="marketMovers" class="list-block">
-              <div class="empty-state">Loading movers...</div>
+        <!-- Disasters -->
+        <section id="disastersTab" class="tab-content">
+          <div class="card">
+            <h2>Active Natural Events</h2>
+            <p class="card-subtitle">NASA EONET — open data, no key required</p>
+            <div id="disastersFeed" class="events-feed">
+              <div class="empty-state">Loading events...</div>
             </div>
+          </div>
+        </section>
 
-            <h3>World + Market Feed</h3>
-            <div id="marketNews" class="news-feed">
+        <!-- News -->
+        <section id="newsTab" class="tab-content">
+          <div class="card">
+            <h2>World News</h2>
+            <p class="card-subtitle">BBC RSS feeds — free, no key required</p>
+            <div class="filter-row">
+              <button class="filter-btn active" data-feed="world">World</button>
+              <button class="filter-btn" data-feed="tech">Tech</button>
+              <button class="filter-btn" data-feed="business">Business</button>
+              <button class="filter-btn" data-feed="science">Science</button>
+            </div>
+            <div id="newsFeed" class="news-feed">
               <div class="empty-state">Loading news...</div>
             </div>
           </div>
         </section>
 
-        <section id="jobsTab" class="tab-content">
+        <!-- Space -->
+        <section id="spaceTab" class="tab-content">
           <div class="card">
-            <h2>Layoff Radar</h2>
-            <p class="card-subtitle">
-              Monitor hiring slowdowns, layoffs, and workforce signals from major companies.
-            </p>
+            <h2>Space Intelligence</h2>
+            <p class="card-subtitle">ISS tracking + NOAA space weather — all free</p>
 
-            <h3>Tracked Companies</h3>
-            <div class="chips">
-              <span class="chip">Google</span>
-              <span class="chip">Microsoft</span>
-              <span class="chip">Meta</span>
-              <span class="chip">Amazon</span>
-              <span class="chip">AMD</span>
-              <span class="chip">Intel</span>
+            <h3>🛸 ISS Live Position</h3>
+            <div id="issInfo" class="iss-card">
+              <div class="empty-state">Locating ISS...</div>
             </div>
 
-            <h3>Jobs / Layoff Intelligence</h3>
-            <div id="jobsFeed" class="news-feed">
-              <div class="empty-state">Loading jobs intelligence...</div>
-            </div>
-          </div>
-        </section>
-
-        <section id="aiTab" class="tab-content">
-          <div class="card">
-            <h2>AI Alerts</h2>
-            <p class="card-subtitle">
-              Follow AI launches, chip demand, cloud moves, regulation, and major company updates.
-            </p>
-
-            <div class="chips">
-              <span class="chip">OpenAI</span>
-              <span class="chip">NVIDIA</span>
-              <span class="chip">AMD</span>
-              <span class="chip">Microsoft</span>
-              <span class="chip">Google</span>
-              <span class="chip">Meta</span>
-            </div>
-
-            <h3>AI Intelligence Layer</h3>
-            <div id="aiFeed" class="news-feed">
-              <div class="empty-state">Loading AI alerts...</div>
+            <h3>☀️ Space Weather</h3>
+            <div id="spaceWeather">
+              <div class="empty-state">Loading space weather...</div>
             </div>
           </div>
         </section>

@@ -3,149 +3,173 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Youooo Talent</title>
-  <meta
-    name="description"
-    content="Youooo Talent — recruiter-focused talent shock radar."
+  <title>YOUOOO World Intelligence</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="./style.css" />
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="page-bg"></div>
-
   <div class="app-shell">
-    <header class="topbar glass">
-      <div class="brand">
-        <div class="brand-icon">🚀</div>
-        <div class="brand-copy">
-          <strong>Youooo Talent</strong>
-          <span>Talent Shock Radar for Recruiters</span>
+
+    <!-- Live ticker bar -->
+    <div class="ticker-bar">
+      <div class="ticker-label">◉ LIVE</div>
+      <div class="ticker-wrap">
+        <div class="ticker-track" id="tickerTrack">Loading live data...</div>
+      </div>
+    </div>
+
+    <!-- Top header -->
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand">YOUOOO</div>
+        <div class="subtitle">World Intelligence Platform</div>
+      </div>
+
+      <div class="live-stats">
+        <div class="stat-pill">
+          <span class="stat-label">QUAKES</span>
+          <span class="stat-value accent-red" id="quakeCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">FIRES</span>
+          <span class="stat-value accent-orange" id="fireCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">EVENTS</span>
+          <span class="stat-value accent-cyan" id="eventCount">—</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">ISS ALT</span>
+          <span class="stat-value accent-purple" id="issAlt">—</span>
         </div>
       </div>
 
       <div class="topbar-right">
-        <button id="watchlistBtn" class="watchlist-trigger-btn">🔔 My Watchlist</button>
-        <div class="status-pill">Recruiter View</div>
+        <div class="status-pill online">● ONLINE</div>
+        <div class="status-pill live">◉ LIVE</div>
+        <div class="status-pill" id="updatedAt">UPDATED: —</div>
       </div>
     </header>
 
-    <main class="main-grid">
-      <section class="hero glass">
-        <div class="hero-copy">
-          <p class="eyebrow">Recruiting Intelligence</p>
-          <h1>Find fresh talent pools before everyone else.</h1>
-          <p class="hero-text">
-            Track layoffs, hiring freezes, and hiring surges. Click any signal to
-            see where talent is available, which roles matter, and how to act on it.
-          </p>
-        </div>
+    <main class="layout">
+      <!-- Map section -->
+      <section class="map-section">
+        <div id="map"></div>
 
-        <div class="hero-metrics">
-          <div class="metric-card">
-            <span class="metric-label">Tracked Signals</span>
-            <strong id="trackedSignalsCount">0</strong>
+        <!-- Layer switcher -->
+        <div class="floating-panel layers-panel">
+          <div class="panel-title-row">
+            <h3>MAP LAYERS</h3>
           </div>
-          <div class="metric-card">
-            <span class="metric-label">Fresh Windows</span>
-            <strong id="freshWindowsCount">0</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Best Target</span>
-            <strong id="bestTargetText">—</strong>
+          <div class="layer-grid">
+            <button class="layer-btn active" data-layer="earthquakes">🔴 Earthquakes</button>
+            <button class="layer-btn" data-layer="fires">🔥 Wildfires</button>
+            <button class="layer-btn" data-layer="volcanoes">🌋 Volcanoes</button>
+            <button class="layer-btn" data-layer="storms">🌀 Storms</button>
+            <button class="layer-btn" data-layer="iss">🛸 ISS Live</button>
+            <button class="layer-btn" data-layer="markets">📈 Markets</button>
           </div>
         </div>
-      </section>
 
-      <section class="map-panel glass">
-        <div class="section-head">
-          <div>
-            <p class="section-kicker">Global View</p>
-            <h2>Live Talent Map</h2>
+        <!-- Live alerts -->
+        <div class="floating-panel alerts-panel">
+          <div class="panel-title-row">
+            <h3>LIVE ALERTS</h3>
+            <span class="alert-badge" id="alertCount">0</span>
           </div>
-          <div class="section-note">Pinned signals by location</div>
-        </div>
-        <div id="talentMap"></div>
-      </section>
-
-      <section class="signals-panel glass">
-        <div class="section-head">
-          <div>
-            <p class="section-kicker">Live Board</p>
-            <h2>Latest Talent Shocks</h2>
-          </div>
-          <div class="section-note">Click a signal to inspect the talent pool</div>
-        </div>
-
-        <div id="signalsContainer" class="signals-grid"></div>
-      </section>
-
-      <section class="details-panel glass">
-        <div class="section-head">
-          <div>
-            <p class="section-kicker">Signal Intelligence</p>
-            <h2>Talent Breakdown</h2>
-          </div>
-          <div id="detailsStatus" class="section-note">Waiting for selection</div>
-        </div>
-
-        <div id="detailsContainer" class="details-empty">
-          <div class="empty-state">
-            <div class="empty-icon">📊</div>
-            <h3>Select a company</h3>
-            <p>Review roles, locations, timing, and recruiter actions.</p>
+          <div id="liveAlerts" class="alerts-list">
+            <div class="empty-state">Loading alerts...</div>
           </div>
         </div>
       </section>
+
+      <!-- Side panel -->
+      <aside class="side-panel">
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="marketsTab">📈 Markets</button>
+          <button class="tab-btn" data-tab="disastersTab">🌍 Disasters</button>
+          <button class="tab-btn" data-tab="newsTab">📰 News</button>
+          <button class="tab-btn" data-tab="spaceTab">🛸 Space</button>
+        </nav>
+
+        <!-- Markets -->
+        <section id="marketsTab" class="tab-content active">
+          <div class="card">
+            <h2>Crypto Prices</h2>
+            <p class="card-subtitle">Live via CoinGecko — no API key, always free</p>
+            <div id="cryptoGrid" class="watchlist-grid">
+              <div class="empty-state">Loading crypto...</div>
+            </div>
+
+            <h3>Stock Watchlist</h3>
+            <p class="card-subtitle">Yahoo Finance via open proxy</p>
+            <div id="watchlistGrid" class="watchlist-grid">
+              <div class="empty-state">Loading stocks...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Disasters -->
+        <section id="disastersTab" class="tab-content">
+          <div class="card">
+            <h2>Active Natural Events</h2>
+            <p class="card-subtitle">NASA EONET — open data, no key required</p>
+            <div id="disastersFeed" class="events-feed">
+              <div class="empty-state">Loading events...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- News -->
+        <section id="newsTab" class="tab-content">
+          <div class="card">
+            <h2>World News</h2>
+            <p class="card-subtitle">BBC RSS feeds — free, no key required</p>
+            <div class="filter-row">
+              <button class="filter-btn active" data-feed="world">World</button>
+              <button class="filter-btn" data-feed="tech">Tech</button>
+              <button class="filter-btn" data-feed="business">Business</button>
+              <button class="filter-btn" data-feed="science">Science</button>
+            </div>
+            <div id="newsFeed" class="news-feed">
+              <div class="empty-state">Loading news...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Space -->
+        <section id="spaceTab" class="tab-content">
+          <div class="card">
+            <h2>Space Intelligence</h2>
+            <p class="card-subtitle">ISS tracking + NOAA space weather — all free</p>
+
+            <h3>🛸 ISS Live Position</h3>
+            <div id="issInfo" class="iss-card">
+              <div class="empty-state">Locating ISS...</div>
+            </div>
+
+            <h3>☀️ Space Weather</h3>
+            <div id="spaceWeather">
+              <div class="empty-state">Loading space weather...</div>
+            </div>
+          </div>
+        </section>
+      </aside>
     </main>
   </div>
 
-  <!-- Watchlist Modal -->
-  <div id="watchlistModal" class="modal-overlay" hidden>
-    <div class="modal-box glass">
-      <div class="modal-head">
-        <h3>🔔 Email Watchlist</h3>
-        <button id="closeWatchlistModal" class="modal-close">✕</button>
-      </div>
-      <p class="modal-desc">Get an email alert when a company you're watching has a fresh signal update.</p>
-
-      <div class="modal-form">
-        <label class="modal-label" for="watchEmail">Your Email</label>
-        <input id="watchEmail" type="email" class="modal-input" placeholder="you@example.com" />
-
-        <label class="modal-label" for="watchCompany">Company</label>
-        <select id="watchCompany" class="modal-input modal-select">
-          <option value="">— Select a company —</option>
-        </select>
-
-        <button id="subscribeBtn" class="modal-btn-primary">Subscribe</button>
-        <button id="unsubscribeBtn" class="modal-btn-danger">Unsubscribe</button>
-      </div>
-
-      <p id="watchlistMsg" class="modal-message" hidden></p>
-    </div>
-  </div>
-
-  <!-- AI Outreach Modal -->
-  <div id="outreachModal" class="modal-overlay" hidden>
-    <div class="modal-box glass">
-      <div class="modal-head">
-        <h3>💼 AI Outreach Message</h3>
-        <button id="closeOutreachModal" class="modal-close">✕</button>
-      </div>
-      <div id="outreachContent" class="outreach-body">
-        <div class="outreach-loading">
-          <div class="spinner"></div>
-          <p>Generating personalized message…</p>
-        </div>
-      </div>
-      <div id="outreachActions" class="outreach-actions" hidden>
-        <button id="copyOutreachAI" class="modal-btn-primary">📋 Copy Message</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./script.js"></script>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="script.js"></script>
 </body>
 </html>
